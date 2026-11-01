@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, User } from 'firebase/auth';
 import { auth } from './services/firebase';
-import { firestoreService, ADMIN_EMAILS } from './services/firestoreService';
+import { firestoreService, ADMIN_EMAILS, checkIsUserAdmin } from './services/firestoreService';
 import { Service, BusinessSettings, Appointment } from './types';
 import { DEFAULT_BUSINESS_SETTINGS, DEFAULT_SERVICES } from './services/seedData';
 import { setGmailAccessToken } from './services/gmail';
@@ -33,8 +33,25 @@ export default function App() {
   const [isSigningIn, setIsSigningIn] = useState<boolean>(false);
   const [authErrorNotice, setAuthErrorNotice] = useState<string | null>(null);
 
-  // Check admin privileges: rayanat.barbosa@gmail.com, ruelchristianumel@gmail.com, etc.
-  const isAdmin = Boolean(currentUser?.email && ADMIN_EMAILS.includes(currentUser.email.toLowerCase()));
+  const [isFirestoreAdmin, setIsFirestoreAdmin] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (currentUser) {
+      checkIsUserAdmin(currentUser.email, currentUser.uid).then((res) => {
+        setIsFirestoreAdmin(res);
+      });
+    } else {
+      setIsFirestoreAdmin(false);
+    }
+  }, [currentUser]);
+
+  // Check admin privileges: rayanat.barbosa@gmail.com, ruelchristianumel@gmail.com, VITE_ADMIN_EMAILS, or Firestore admins collection
+  const isAdmin = Boolean(
+    currentUser?.email && (
+      ADMIN_EMAILS.includes(currentUser.email.toLowerCase()) ||
+      isFirestoreAdmin
+    )
+  );
 
   // Listen to Auth State Changes & Global Unhandled Token/WebSocket Rejections
   useEffect(() => {

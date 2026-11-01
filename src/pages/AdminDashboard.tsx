@@ -78,6 +78,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [formSettings, setFormSettings] = useState<BusinessSettings>(settings);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
 
+  // Dynamic Admin Accounts Management
+  const [adminAccountsList, setAdminAccountsList] = useState<{ id: string; email: string; role?: string }[]>([]);
+  const [newAdminEmail, setNewAdminEmail] = useState('');
+  const [isAddingAdmin, setIsAddingAdmin] = useState(false);
+
+  React.useEffect(() => {
+    firestoreService.getAdminsList().then((res) => setAdminAccountsList(res));
+  }, []);
+
   // Sync settings when prop updates
   React.useEffect(() => {
     setFormSettings(settings);
@@ -719,108 +728,213 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
       {/* SUB-TAB 3: BUSINESS SETTINGS */}
       {activeSubTab === 'settings' && (
-        <form onSubmit={handleSaveSettings} className="bg-white rounded-3xl p-6 sm:p-8 border border-[#EFE8E9] space-y-6">
-          <div className="flex items-center justify-between border-b border-[#FAF4F5] pb-4">
-            <div>
-              <h2 className="font-serif text-xl font-bold text-[#231F20]">
-                Salon Profile &amp; Contact Information
-              </h2>
-              <p className="text-xs text-[#7A6E74] mt-0.5">
-                These settings update your public storefront, booking notices, and customer communications.
-              </p>
+        <div className="space-y-6">
+          <form onSubmit={handleSaveSettings} className="bg-white rounded-3xl p-6 sm:p-8 border border-[#EFE8E9] space-y-6">
+            <div className="flex items-center justify-between border-b border-[#FAF4F5] pb-4">
+              <div>
+                <h2 className="font-serif text-xl font-bold text-[#231F20]">
+                  Salon Profile &amp; Contact Information
+                </h2>
+                <p className="text-xs text-[#7A6E74] mt-0.5">
+                  These settings update your public storefront, booking notices, and customer communications.
+                </p>
+              </div>
+              <button
+                type="submit"
+                disabled={isSavingSettings}
+                className="px-6 py-2.5 rounded-full text-xs font-semibold bg-[#8B3A56] hover:bg-[#722A42] text-white flex items-center gap-2 shadow-xs cursor-pointer transition-colors"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>{isSavingSettings ? 'Saving...' : 'Save Settings'}</span>
+              </button>
             </div>
-            <button
-              type="submit"
-              disabled={isSavingSettings}
-              className="px-6 py-2.5 rounded-full text-xs font-semibold bg-[#8B3A56] hover:bg-[#722A42] text-white flex items-center gap-2 shadow-xs cursor-pointer transition-colors"
-            >
-              <Save className="w-3.5 h-3.5" />
-              <span>{isSavingSettings ? 'Saving...' : 'Save Settings'}</span>
-            </button>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-xs font-bold text-[#5C5257] mb-1">Business Name</label>
+                <input
+                  type="text"
+                  value={formSettings.businessName}
+                  onChange={(e) => setFormSettings({ ...formSettings, businessName: e.target.value })}
+                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#FAF7F4] border border-[#E5D5DA] focus:border-[#8B3A56] focus:outline-hidden"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#5C5257] mb-1">Tagline</label>
+                <input
+                  type="text"
+                  value={formSettings.tagline}
+                  onChange={(e) => setFormSettings({ ...formSettings, tagline: e.target.value })}
+                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#FAF7F4] border border-[#E5D5DA] focus:border-[#8B3A56] focus:outline-hidden"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#5C5257] mb-1">Instagram Handle</label>
+                <input
+                  type="text"
+                  value={formSettings.instagramHandle}
+                  onChange={(e) => setFormSettings({ ...formSettings, instagramHandle: e.target.value })}
+                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#FAF7F4] border border-[#E5D5DA] focus:border-[#8B3A56] focus:outline-hidden"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#5C5257] mb-1">Instagram URL</label>
+                <input
+                  type="url"
+                  value={formSettings.instagramUrl}
+                  onChange={(e) => setFormSettings({ ...formSettings, instagramUrl: e.target.value })}
+                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#FAF7F4] border border-[#E5D5DA] focus:border-[#8B3A56] focus:outline-hidden"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#5C5257] mb-1">Contact Email</label>
+                <input
+                  type="email"
+                  value={formSettings.contactEmail}
+                  onChange={(e) => setFormSettings({ ...formSettings, contactEmail: e.target.value })}
+                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#FAF7F4] border border-[#E5D5DA] focus:border-[#8B3A56] focus:outline-hidden"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#5C5257] mb-1">Location / City</label>
+                <input
+                  type="text"
+                  value={formSettings.location}
+                  onChange={(e) => setFormSettings({ ...formSettings, location: e.target.value })}
+                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#FAF7F4] border border-[#E5D5DA] focus:border-[#8B3A56] focus:outline-hidden"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-bold text-[#5C5257] mb-1">Google Maps Pin URL</label>
+                <input
+                  type="url"
+                  value={formSettings.googleMapsUrl || ''}
+                  onChange={(e) => setFormSettings({ ...formSettings, googleMapsUrl: e.target.value })}
+                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#FAF7F4] border border-[#E5D5DA] focus:border-[#8B3A56] focus:outline-hidden"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-bold text-[#5C5257] mb-1">Home Service Notice / Policy</label>
+                <textarea
+                  rows={2}
+                  value={formSettings.homeServiceNotice}
+                  onChange={(e) => setFormSettings({ ...formSettings, homeServiceNotice: e.target.value })}
+                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#FAF7F4] border border-[#E5D5DA] focus:border-[#8B3A56] focus:outline-hidden"
+                />
+              </div>
+            </div>
+          </form>
+
+          {/* Dynamic Admin Accounts Management Card */}
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-[#EFE8E9] space-y-6">
+            <div className="flex items-center justify-between border-b border-[#FAF4F5] pb-4">
+              <div>
+                <h2 className="font-serif text-xl font-bold text-[#231F20] flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-[#8B3A56]" />
+                  <span>Authorized Owner &amp; Admin Accounts</span>
+                </h2>
+                <p className="text-xs text-[#7A6E74] mt-0.5">
+                  Google accounts listed here have full owner access to manage appointments, calendar blocks, and salon settings.
+                </p>
+              </div>
+            </div>
+
+            {/* Add Admin Form */}
+            <div className="bg-[#FAF7F4] p-5 rounded-2xl border border-[#EFE8E9] flex flex-col sm:flex-row items-center gap-3">
+              <div className="w-full sm:w-auto flex-1">
+                <label className="block text-[11px] font-bold text-[#7A6E74] uppercase mb-1">
+                  Add New Owner / Admin Google Email
+                </label>
+                <input
+                  type="email"
+                  placeholder="e.g. newowner@gmail.com"
+                  value={newAdminEmail}
+                  onChange={(e) => setNewAdminEmail(e.target.value)}
+                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-white border border-[#E5D5DA] focus:border-[#8B3A56] focus:outline-hidden"
+                />
+              </div>
+              <button
+                type="button"
+                disabled={!newAdminEmail || isAddingAdmin}
+                onClick={async () => {
+                  if (!newAdminEmail.trim()) return;
+                  setIsAddingAdmin(true);
+                  try {
+                    await firestoreService.addAdminEmail(newAdminEmail);
+                    const updated = await firestoreService.getAdminsList();
+                    setAdminAccountsList(updated);
+                    setNewAdminEmail('');
+                    showToast(`Granted owner access to ${newAdminEmail}!`);
+                  } catch (err) {
+                    showToast(undefined, err instanceof Error ? err.message : 'Failed to add admin');
+                  } finally {
+                    setIsAddingAdmin(false);
+                  }
+                }}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs font-semibold bg-[#8B3A56] hover:bg-[#722A42] text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer mt-2 sm:mt-5 disabled:opacity-40"
+              >
+                <Plus className="w-4 h-4" />
+                <span>{isAddingAdmin ? 'Granting...' : 'Grant Owner Access'}</span>
+              </button>
+            </div>
+
+            {/* Admin Accounts List */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[#7A6E74]">
+                Active Owners ({adminAccountsList.length})
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {adminAccountsList.map((admin) => {
+                  const isPermanent = ['rayanat.barbosa@gmail.com', 'ruelchristianumel@gmail.com'].includes(admin.email.toLowerCase());
+                  return (
+                    <div
+                      key={admin.id || admin.email}
+                      className="p-3.5 rounded-2xl bg-[#FAF7F4] border border-[#EFE8E9] flex items-center justify-between gap-3 text-xs"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-full bg-[#FCEBEE] text-[#8B3A56] flex items-center justify-center font-bold text-xs shrink-0">
+                          {admin.email.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-[#231F20] truncate">{admin.email}</p>
+                          <span className="text-[10px] text-[#8B3A56] font-bold uppercase tracking-wider">
+                            {admin.role || 'Owner'}
+                          </span>
+                        </div>
+                      </div>
+                      {!isPermanent && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              await firestoreService.removeAdminEmail(admin.email);
+                              const updated = await firestoreService.getAdminsList();
+                              setAdminAccountsList(updated);
+                              showToast(`Revoked owner access for ${admin.email}`);
+                            } catch {
+                              showToast(undefined, 'Failed to revoke admin');
+                            }
+                          }}
+                          className="p-1.5 text-gray-400 hover:text-red-600 transition-colors cursor-pointer shrink-0"
+                          title="Revoke Admin Access"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <div>
-              <label className="block text-xs font-bold text-[#5C5257] mb-1">Business Name</label>
-              <input
-                type="text"
-                value={formSettings.businessName}
-                onChange={(e) => setFormSettings({ ...formSettings, businessName: e.target.value })}
-                className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#FAF7F4] border border-[#E5D5DA] focus:border-[#8B3A56] focus:outline-hidden"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-[#5C5257] mb-1">Tagline</label>
-              <input
-                type="text"
-                value={formSettings.tagline}
-                onChange={(e) => setFormSettings({ ...formSettings, tagline: e.target.value })}
-                className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#FAF7F4] border border-[#E5D5DA] focus:border-[#8B3A56] focus:outline-hidden"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-[#5C5257] mb-1">Instagram Handle</label>
-              <input
-                type="text"
-                value={formSettings.instagramHandle}
-                onChange={(e) => setFormSettings({ ...formSettings, instagramHandle: e.target.value })}
-                className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#FAF7F4] border border-[#E5D5DA] focus:border-[#8B3A56] focus:outline-hidden"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-[#5C5257] mb-1">Instagram URL</label>
-              <input
-                type="url"
-                value={formSettings.instagramUrl}
-                onChange={(e) => setFormSettings({ ...formSettings, instagramUrl: e.target.value })}
-                className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#FAF7F4] border border-[#E5D5DA] focus:border-[#8B3A56] focus:outline-hidden"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-[#5C5257] mb-1">Contact Email</label>
-              <input
-                type="email"
-                value={formSettings.contactEmail}
-                onChange={(e) => setFormSettings({ ...formSettings, contactEmail: e.target.value })}
-                className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#FAF7F4] border border-[#E5D5DA] focus:border-[#8B3A56] focus:outline-hidden"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-[#5C5257] mb-1">Location / City</label>
-              <input
-                type="text"
-                value={formSettings.location}
-                onChange={(e) => setFormSettings({ ...formSettings, location: e.target.value })}
-                className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#FAF7F4] border border-[#E5D5DA] focus:border-[#8B3A56] focus:outline-hidden"
-              />
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-bold text-[#5C5257] mb-1">Google Maps Pin URL</label>
-              <input
-                type="url"
-                value={formSettings.googleMapsUrl || ''}
-                onChange={(e) => setFormSettings({ ...formSettings, googleMapsUrl: e.target.value })}
-                className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#FAF7F4] border border-[#E5D5DA] focus:border-[#8B3A56] focus:outline-hidden"
-              />
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-bold text-[#5C5257] mb-1">Home Service Notice / Policy</label>
-              <textarea
-                rows={2}
-                value={formSettings.homeServiceNotice}
-                onChange={(e) => setFormSettings({ ...formSettings, homeServiceNotice: e.target.value })}
-                className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#FAF7F4] border border-[#E5D5DA] focus:border-[#8B3A56] focus:outline-hidden"
-              />
-            </div>
-          </div>
-        </form>
+        </div>
       )}
 
       {/* SUB-TAB 4: SERVICES CATALOG */}

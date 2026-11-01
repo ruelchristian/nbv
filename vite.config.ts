@@ -15,6 +15,9 @@ export default defineConfig(({ command }) => {
               registerType: 'autoUpdate',
               includeAssets: ['assets/logo.png'],
               workbox: {
+                cleanupOutdatedCaches: true,
+                clientsClaim: true,
+                skipWaiting: true,
                 maximumFileSizeToCacheInBytes: 6 * 1024 * 1024, // 6 MiB limit for service worker precaching
               },
               manifest: {

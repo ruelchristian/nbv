@@ -5,6 +5,7 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  deleteDoc,
   query,
   where,
   runTransaction,
@@ -18,11 +19,44 @@ const SERVICES_COL = 'services';
 const APPOINTMENTS_COL = 'appointments';
 const SLOT_LOCKS_COL = 'slot_locks';
 const SETTINGS_COL = 'business_settings';
+const ADMINS_COL = 'admins';
 const LOCAL_STORAGE_APPTS_KEY = 'nails_by_vril_appointments_backup';
-export const ADMIN_EMAILS = [
+
+// Dynamically configurable admin emails: Reads from VITE_ADMIN_EMAILS env variable or defaults
+const envAdminEmails: string[] = typeof import.meta !== 'undefined' && import.meta.env?.VITE_ADMIN_EMAILS
+  ? String(import.meta.env.VITE_ADMIN_EMAILS)
+      .split(',')
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean)
+  : [];
+
+export const DEFAULT_ADMIN_EMAILS = [
   'rayanat.barbosa@gmail.com',
   'ruelchristianumel@gmail.com',
 ];
+
+export const ADMIN_EMAILS: string[] = Array.from(new Set([...DEFAULT_ADMIN_EMAILS, ...envAdminEmails]));
+
+export async function checkIsUserAdmin(email?: string | null, uid?: string): Promise<boolean> {
+  if (!email && !uid) return false;
+  const cleanEmail = email?.toLowerCase().trim() || '';
+  if (cleanEmail && ADMIN_EMAILS.includes(cleanEmail)) return true;
+
+  try {
+    if (uid) {
+      const snapUid = await getDoc(doc(db, ADMINS_COL, uid));
+      if (snapUid.exists()) return true;
+    }
+    if (cleanEmail) {
+      const cleanId = cleanEmail.replace(/[^a-zA-Z0-9]/g, '_');
+      const snapEmail = await getDoc(doc(db, ADMINS_COL, cleanId));
+      if (snapEmail.exists()) return true;
+    }
+  } catch {
+    // Return hardcoded list fallback
+  }
+  return false;
+}
 
 export function getLocalAppointments(): Appointment[] {
   try {
@@ -658,5 +692,50 @@ export const firestoreService = {
       handleFirestoreError(error, OperationType.UPDATE, `${APPOINTMENTS_COL}/${id}`);
       throw error;
     }
+  },
+
+  // 6. DYNAMIC ADMIN ACCOUNTS MANAGEMENT
+  async getAdminsList(): Promise<{ id: string; email: string; role?: string }[]> {
+    const list: { id: string; email: string; role?: string }[] = ADMIN_EMAILS.map((email) => ({
+      id: email.replace(/[^a-zA-Z0-9]/g, '_'),
+      email,
+      role: 'owner',
+    }));
+
+    try {
+      const snap = await Promise.race([
+        getDocs(collection(db, ADMINS_COL)),
+        new Promise<null>((res) => setTimeout(() => res(null), 1500)),
+      ]);
+      if (snap) {
+        snap.forEach((d) => {
+          const data = d.data();
+          const email = (data.email || '').toLowerCase().trim();
+          if (email && !list.some((item) => item.email.toLowerCase() === email)) {
+            list.push({ id: d.id, email, role: data.role || 'admin' });
+          }
+        });
+      }
+    } catch (e) {
+      console.warn('Notice loading admins list from Firestore:', e);
+    }
+    return list;
+  },
+
+  async addAdminEmail(email: string): Promise<void> {
+    const cleanEmail = email.toLowerCase().trim();
+    if (!cleanEmail) throw new Error('Please enter a valid email address.');
+    const docId = cleanEmail.replace(/[^a-zA-Z0-9]/g, '_');
+    await setDoc(doc(db, ADMINS_COL, docId), {
+      email: cleanEmail,
+      role: 'owner',
+      createdAt: new Date().toISOString(),
+    });
+  },
+
+  async removeAdminEmail(email: string): Promise<void> {
+    const cleanEmail = email.toLowerCase().trim();
+    const docId = cleanEmail.replace(/[^a-zA-Z0-9]/g, '_');
+    await deleteDoc(doc(db, ADMINS_COL, docId));
   },
 };
