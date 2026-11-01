@@ -83,14 +83,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setFormSettings(settings);
   }, [settings]);
 
+  const successTimerRef = React.useRef<any>(null);
+  const errorTimerRef = React.useRef<any>(null);
+
   const showToast = (success?: string, error?: string) => {
     if (success) {
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
       setActionSuccessMessage(success);
-      setTimeout(() => setActionSuccessMessage(null), 4000);
+      successTimerRef.current = setTimeout(() => setActionSuccessMessage(null), 4000);
     }
     if (error) {
+      if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
       setActionErrorMessage(error);
-      setTimeout(() => setActionErrorMessage(null), 5000);
+      errorTimerRef.current = setTimeout(() => setActionErrorMessage(null), 5000);
     }
   };
 

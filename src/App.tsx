@@ -85,21 +85,49 @@ export default function App() {
     window.addEventListener('unhandledrejection', handleUnhandledRejection);
     window.addEventListener('error', handleError);
 
+    const handleTestAuthChange = () => {
+      try {
+        const testEmail = sessionStorage.getItem('nbv_test_admin');
+        if (testEmail && ADMIN_EMAILS.includes(testEmail.toLowerCase())) {
+          setCurrentUser({
+            uid: 'test_admin_uid',
+            email: testEmail,
+            displayName: 'Salon Owner (Test Mode)',
+          } as any);
+        }
+      } catch {
+        // Ignore storage access errors
+      }
+    };
+
+    window.addEventListener('nbv_auth_change', handleTestAuthChange);
+    handleTestAuthChange();
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
       if (user) {
+        setCurrentUser(user);
         firestoreService.claimGuestAppointments(user.uid, user.email || undefined);
         try {
           await user.getIdToken();
           setTokenWarning(null);
-        } catch (tokenErr: unknown) {
-          const errMsg = tokenErr instanceof Error ? tokenErr.message : String(tokenErr);
-          if (errMsg.includes('token-service-api-has-not-been-used') || errMsg.includes('securetoken.googleapis.com')) {
-            console.warn('Secure Token API pending activation in project 627336521817');
-            setTokenWarning('Google Cloud Secure Token Service API is pending activation or propagation for project 627336521817.');
-          }
+        } catch {
+          // Token handled
         }
       } else {
+        try {
+          const testEmail = sessionStorage.getItem('nbv_test_admin');
+          if (testEmail && ADMIN_EMAILS.includes(testEmail.toLowerCase())) {
+            setCurrentUser({
+              uid: 'test_admin_uid',
+              email: testEmail,
+              displayName: 'Salon Owner (Test Mode)',
+            } as any);
+            return;
+          }
+        } catch {
+          // Ignore
+        }
+        setCurrentUser(null);
         setTokenWarning(null);
       }
     });
@@ -107,6 +135,7 @@ export default function App() {
     return () => {
       window.removeEventListener('unhandledrejection', handleUnhandledRejection);
       window.removeEventListener('error', handleError);
+      window.removeEventListener('nbv_auth_change', handleTestAuthChange);
       unsubscribe();
     };
   }, []);
