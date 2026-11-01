@@ -38,7 +38,8 @@ async function runLiveE2ETest() {
     // TEST 1: Page Load, Meta & Title
     // ----------------------------------------------------
     console.log(`\n--- Test 1: Production Site Accessibility & Branding ---`);
-    const response = await page.goto(LIVE_URL, { waitUntil: 'networkidle', timeout: 30000 });
+    const response = await page.goto(LIVE_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.waitForTimeout(1000);
     const status = response.status();
     recordResult('HTTP 200 OK', status === 200, `Status: ${status}`);
 
@@ -201,8 +202,8 @@ async function runLiveE2ETest() {
     // ----------------------------------------------------
     console.log(`\n--- Test 5: Mobile Viewport & Responsiveness ---`);
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto(LIVE_URL, { waitUntil: 'networkidle' });
-    await page.waitForTimeout(500);
+    await page.goto(LIVE_URL, { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1000);
 
     const hamburgerBtn = page.locator('button[aria-label="Toggle navigation menu"]');
     const isHamburgerVisible = await hamburgerBtn.isVisible();
