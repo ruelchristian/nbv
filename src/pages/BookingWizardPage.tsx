@@ -693,16 +693,12 @@ export const BookingWizardPage: React.FC<BookingWizardPageProps> = ({
   const goToStep = (stepNum: number) => {
     setCurrentStep(stepNum);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    const cardEl = document.getElementById('booking-wizard-card');
-    if (cardEl) {
-      cardEl.scrollTo({ top: 0, behavior: 'smooth' });
-    }
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 w-full">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 w-full transition-all">
       {/* Wizard Step Progress Tracker */}
-      <div className="mb-8">
+      <div className="mb-8 bg-white/90 backdrop-blur-md rounded-3xl border border-[#EFE8E9] p-5 sm:p-7 shadow-xs">
         <div className="flex items-center justify-between">
           {stepsList.map((stepName, idx) => {
             const stepNum = idx + 1;
@@ -710,29 +706,47 @@ export const BookingWizardPage: React.FC<BookingWizardPageProps> = ({
             const isCurrent = currentStep === stepNum;
 
             return (
-              <div key={stepName} className="flex flex-col items-center flex-1">
+              <button
+                key={stepName}
+                type="button"
+                onClick={() => {
+                  if (isCompleted) goToStep(stepNum);
+                }}
+                disabled={!isCompleted}
+                className={`flex flex-col items-center flex-1 transition-all ${
+                  isCompleted ? 'cursor-pointer hover:opacity-80' : 'cursor-default'
+                }`}
+              >
                 <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                  className={`w-9 h-9 sm:w-11 sm:h-11 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold transition-all shadow-2xs ${
                     isCompleted
-                      ? 'bg-[#8B3A56] text-white'
+                      ? 'bg-[#8B3A56] text-white shadow-[#8B3A56]/20'
                       : isCurrent
-                      ? 'border-2 border-[#8B3A56] text-[#8B3A56] bg-white'
+                      ? 'border-2 border-[#8B3A56] text-[#8B3A56] bg-white ring-4 ring-[#8B3A56]/10'
                       : 'bg-gray-100 text-gray-400'
                   }`}
                 >
-                  {isCompleted ? <CheckCircle2 className="w-4 h-4" /> : stepNum}
+                  {isCompleted ? <CheckCircle2 className="w-5 h-5" /> : stepNum}
                 </div>
-                <span className="hidden sm:block text-[11px] font-medium text-[#7A6E74] mt-1.5">
+                <span
+                  className={`hidden sm:block text-[11px] lg:text-xs font-semibold mt-2 transition-colors ${
+                    isCurrent
+                      ? 'text-[#8B3A56]'
+                      : isCompleted
+                      ? 'text-[#231F20]'
+                      : 'text-[#A0959A]'
+                  }`}
+                >
                   {stepName}
                 </span>
-              </div>
+              </button>
             );
           })}
         </div>
-        <div className="relative mt-2">
-          <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-[#EFE8E9] -translate-y-1/2 -z-10" />
+        <div className="relative mt-3.5">
+          <div className="absolute top-1/2 left-0 right-0 h-1 bg-[#EFE8E9] -translate-y-1/2 rounded-full -z-10" />
           <div
-            className="h-0.5 bg-[#8B3A56] transition-all duration-300"
+            className="h-1 bg-[#8B3A56] rounded-full transition-all duration-300"
             style={{ width: `${((currentStep - 1) / (stepsList.length - 1)) * 100}%` }}
           />
         </div>
@@ -740,16 +754,16 @@ export const BookingWizardPage: React.FC<BookingWizardPageProps> = ({
 
       {/* Error alert if any */}
       {submitError && (
-        <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0" />
+        <div className="mb-6 p-4 sm:p-5 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs sm:text-sm flex items-center gap-3 shadow-xs">
+          <AlertCircle className="w-5 h-5 shrink-0" />
           <span>{submitError}</span>
         </div>
       )}
 
-      {/* Wizard Card Body */}
+      {/* Wizard Card Body - Natural Full Page Flow (No Trapped Scroll Box!) */}
       <div
         id="booking-wizard-card"
-        className="bg-white rounded-3xl border border-[#EFE8E9] p-6 sm:p-10 shadow-sm text-left w-full max-h-[75vh] md:max-h-[80vh] overflow-y-auto overscroll-contain scroll-smooth focus:outline-none"
+        className="bg-white rounded-3xl border border-[#EFE8E9] p-6 sm:p-10 lg:p-12 shadow-sm text-left w-full transition-all focus:outline-none"
       >
         {/* STEP 1: Select Service */}
         {currentStep === 1 && (
@@ -1055,10 +1069,7 @@ export const BookingWizardPage: React.FC<BookingWizardPageProps> = ({
             <div id="step1-continue-button-container" className="pt-4 flex justify-end">
               <button
                 disabled={!isServiceStepValid()}
-                onClick={() => {
-                  setCurrentStep(2);
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
+                onClick={() => goToStep(2)}
                 className="px-6 py-2.5 rounded-full text-xs font-semibold uppercase tracking-wider text-white bg-[#8B3A56] hover:bg-[#722A42] disabled:opacity-40 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
               >
                 <span>Continue to Date</span>
@@ -1227,7 +1238,7 @@ export const BookingWizardPage: React.FC<BookingWizardPageProps> = ({
 
             <div className="pt-4 flex items-center justify-between">
               <button
-                onClick={() => setCurrentStep(1)}
+                onClick={() => goToStep(1)}
                 className="px-5 py-2.5 rounded-full text-xs font-semibold text-[#7A6E74] hover:text-[#231F20] flex items-center gap-1.5 cursor-pointer"
               >
                 <ArrowLeft className="w-4 h-4" />
@@ -1237,7 +1248,7 @@ export const BookingWizardPage: React.FC<BookingWizardPageProps> = ({
                 disabled={!selectedDate || !isDateAvailableForBooking(selectedDate, settings)}
                 onClick={() => {
                   if (isDateAvailableForBooking(selectedDate, settings)) {
-                    setCurrentStep(3);
+                    goToStep(3);
                   }
                 }}
                 className="px-6 py-2.5 rounded-full text-xs font-semibold uppercase tracking-wider text-white bg-[#8B3A56] hover:bg-[#722A42] disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
@@ -1315,7 +1326,7 @@ export const BookingWizardPage: React.FC<BookingWizardPageProps> = ({
 
             <div className="pt-4 flex items-center justify-between">
               <button
-                onClick={() => setCurrentStep(2)}
+                onClick={() => goToStep(2)}
                 className="px-5 py-2.5 rounded-full text-xs font-semibold text-[#7A6E74] hover:text-[#231F20] flex items-center gap-1.5 cursor-pointer"
               >
                 <ArrowLeft className="w-4 h-4" />
@@ -1323,7 +1334,7 @@ export const BookingWizardPage: React.FC<BookingWizardPageProps> = ({
               </button>
               <button
                 disabled={!selectedSlot}
-                onClick={() => setCurrentStep(4)}
+                onClick={() => goToStep(4)}
                 className="px-6 py-2.5 rounded-full text-xs font-semibold uppercase tracking-wider text-white bg-[#8B3A56] hover:bg-[#722A42] disabled:opacity-40 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
               >
                 <span>Enter Contact Details</span>
@@ -1576,7 +1587,7 @@ export const BookingWizardPage: React.FC<BookingWizardPageProps> = ({
 
             <div className="pt-4 flex items-center justify-between">
               <button
-                onClick={() => setCurrentStep(3)}
+                onClick={() => goToStep(3)}
                 className="px-5 py-2.5 rounded-full text-xs font-semibold text-[#7A6E74] hover:text-[#231F20] flex items-center gap-1.5 cursor-pointer"
               >
                 <ArrowLeft className="w-4 h-4" />
@@ -1584,7 +1595,7 @@ export const BookingWizardPage: React.FC<BookingWizardPageProps> = ({
               </button>
               <button
                 disabled={!customerName.trim() || !customerEmail.trim() || !customerPhone.trim()}
-                onClick={() => setCurrentStep(5)}
+                onClick={() => goToStep(5)}
                 className="px-6 py-2.5 rounded-full text-xs font-semibold uppercase tracking-wider text-white bg-[#8B3A56] hover:bg-[#722A42] disabled:opacity-40 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
               >
                 <span>Review Details</span>
@@ -1722,7 +1733,7 @@ export const BookingWizardPage: React.FC<BookingWizardPageProps> = ({
 
             <div className="pt-2 flex items-center justify-between">
               <button
-                onClick={() => setCurrentStep(4)}
+                onClick={() => goToStep(4)}
                 className="px-5 py-2.5 rounded-full text-xs font-semibold text-[#7A6E74] hover:text-[#231F20] flex items-center gap-1.5 cursor-pointer"
               >
                 <ArrowLeft className="w-4 h-4" />
@@ -1873,7 +1884,7 @@ export const BookingWizardPage: React.FC<BookingWizardPageProps> = ({
               </button>
               <button
                 onClick={() => {
-                  setCurrentStep(1);
+                  goToStep(1);
                   setSelectedService(null);
                   setSelectedSlot('');
                   setAttachedImageDataUrl('');

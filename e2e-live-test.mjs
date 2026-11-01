@@ -137,7 +137,7 @@ async function runLiveE2ETest() {
 
     // Step 3: Time Slot
     console.log('Wizard Step 3: Selecting Time Slot...');
-    const slotBtn = page.locator('button:has-text("09:00 AM"), button:has-text("01:30 PM"), button:has-text("05:30 PM")').first();
+    const slotBtn = page.locator('button:has-text("Available"):not([disabled]), button:not([disabled]):has-text("AM"), button:not([disabled]):has-text("PM")').first();
     await slotBtn.waitFor({ state: 'visible', timeout: 15000 });
     const slotText = await slotBtn.textContent();
     await slotBtn.click();
@@ -163,7 +163,7 @@ async function runLiveE2ETest() {
     recordResult('Wizard Step 4: Contact Form Filled (Name, Phone, Email)', true);
 
     // Click "Review Details"
-    const reviewBtn = page.locator('button:has-text("Review Details"), button:has-text("Review")').first();
+    const reviewBtn = page.locator('button:has-text("Review Details")').first();
     await reviewBtn.click();
     await page.waitForTimeout(1000);
 
