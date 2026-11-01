@@ -164,7 +164,11 @@ export const firestoreService = {
 
     const fetchDoc = async () => {
       const settingsRef = doc(db, SETTINGS_COL, 'main');
-      const snap = await getDoc(settingsRef);
+      const fetchPromise = getDoc(settingsRef);
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Settings fetch timeout')), 1200)
+      );
+      const snap = await Promise.race([fetchPromise, timeoutPromise]);
       if (snap.exists()) {
         const cloudData = snap.data() as BusinessSettings;
         const local = getCached();
@@ -191,21 +195,7 @@ export const firestoreService = {
       const data = await fetchDoc();
       if (data) return data;
       return getCached() || DEFAULT_BUSINESS_SETTINGS;
-    } catch (initialError: unknown) {
-      // Retry once after 400ms for transient network/connection delays
-      try {
-        await new Promise((res) => setTimeout(res, 400));
-        const retryData = await fetchDoc();
-        if (retryData) return retryData;
-      } catch (retryError: unknown) {
-        const errObj = retryError as { code?: string; message?: string };
-        const errCode = errObj?.code || 'unknown';
-        const errMsg = retryError instanceof Error ? retryError.message : String(retryError);
-        if (errCode !== 'unavailable') {
-          console.warn(`Firestore getSettings notice [code=${errCode}]: ${errMsg}. Retaining resilient business settings.`);
-        }
-      }
-
+    } catch {
       return getCached() || DEFAULT_BUSINESS_SETTINGS;
     }
   },
@@ -404,9 +394,9 @@ export const firestoreService = {
         return newAppointment;
       });
 
-      // 2.5 second timeout so submit never hangs when Firestore backend latency is high
+      // 1.5 second timeout so submit never hangs when Firestore backend latency is high
       const timeoutPromise = new Promise<Appointment>((_, reject) =>
-        setTimeout(() => reject(new Error('Network transaction timeout - proceeding with local confirmation')), 2500)
+        setTimeout(() => reject(new Error('Network transaction timeout - proceeding with local confirmation')), 1500)
       );
 
       return await Promise.race([txPromise, timeoutPromise]);

@@ -18,6 +18,13 @@ async function runLiveE2ETest() {
   });
 
   const page = await context.newPage();
+  page.on('console', msg => {
+    if (msg.type() === 'error' || msg.type() === 'warning') {
+      console.log(`[BROWSER ${msg.type().toUpperCase()}]:`, msg.text());
+    }
+  });
+  page.on('pageerror', err => console.log('[BROWSER UNCAUGHT]:', err.message));
+
   const testResults = [];
 
   function recordResult(testName, passed, details = '') {
@@ -137,21 +144,27 @@ async function runLiveE2ETest() {
     recordResult('Wizard Step 3: Available Time Slot Selected', true, slotText.replace(/\s+/g, ' ').trim());
 
     // Click "Enter Contact Details"
-    const continueToContactBtn = page.locator('button:has-text("Contact Details"), button:has-text("Continue")').first();
+    const continueToContactBtn = page.locator('button:has-text("Enter Contact Details"), button:has-text("Contact Details")').first();
     await continueToContactBtn.click();
     await page.waitForTimeout(800);
 
     // Step 4: Contact Form
     console.log('Wizard Step 4: Filling Contact Details...');
-    await page.locator('input[placeholder*="Full Name" i]').fill('Playwright Live Tester');
-    await page.locator('input[placeholder*="09" i], input[type="tel"]').first().fill('09170001234');
-    await page.locator('input[type="email"]').first().fill('tester@nailsbyvril.com');
+    const nameInput = page.locator('input[placeholder*="Maria" i], input[placeholder*="Santos" i]').first();
+    await nameInput.waitFor({ state: 'visible', timeout: 10000 });
+    await nameInput.fill('Playwright Live Tester');
+
+    const emailInput = page.locator('input[type="email"]').first();
+    await emailInput.fill('tester@nailsbyvril.com');
+
+    const phoneInput = page.locator('input[type="tel"]').first();
+    await phoneInput.fill('09170001234');
     recordResult('Wizard Step 4: Contact Form Filled (Name, Phone, Email)', true);
 
-    // Click "Review"
-    const reviewBtn = page.locator('button:has-text("Review"), button:has-text("Continue")').first();
+    // Click "Review Details"
+    const reviewBtn = page.locator('button:has-text("Review Details"), button:has-text("Review")').first();
     await reviewBtn.click();
-    await page.waitForTimeout(800);
+    await page.waitForTimeout(1000);
 
     // Step 5: Review Summary
     console.log('Wizard Step 5: Reviewing Booking Summary...');
@@ -165,11 +178,20 @@ async function runLiveE2ETest() {
     console.log('Wizard Step 5: Submitting Request...');
     const submitBtn = page.locator('button:has-text("Confirm & Submit Request")');
     await submitBtn.click();
-    await page.waitForTimeout(4000);
-
-    // Step 6: Confirmation Voucher
-    const isVoucherVisible = await page.locator('h2:has-text("Booking Request"), h3:has-text("Voucher"), h2:has-text("Confirmed")').first().isVisible();
-    recordResult('Wizard Step 6: Confirmation Voucher Generated Successfully!', isVoucherVisible);
+    
+    // Wait for Step 6 Voucher to appear
+    console.log('Wizard Step 6: Waiting for Confirmation Voucher...');
+    try {
+      const voucherHeading = page.locator('h2:has-text("Appointment Reserved Successfully"), :has-text("Official Booking Voucher")').first();
+      await voucherHeading.waitFor({ state: 'visible', timeout: 15000 });
+      const isVoucherVisible = await voucherHeading.isVisible();
+      recordResult('Wizard Step 6: Confirmation Voucher Generated Successfully!', isVoucherVisible);
+    } catch (e) {
+      const mainText = await page.locator('main').innerText();
+      console.log('--- SCREEN CONTENT ON TIMEOUT ---:\n', mainText.slice(0, 1000));
+      await page.screenshot({ path: 'live-submit-error.png' });
+      throw e;
+    }
 
     await page.screenshot({ path: 'live-voucher.png' });
     recordResult('Screenshot Captured: live-voucher.png', true);
@@ -188,8 +210,8 @@ async function runLiveE2ETest() {
 
     if (isHamburgerVisible) {
       await hamburgerBtn.click();
-      await page.waitForTimeout(300);
-      const mobileMenuVisible = await page.locator('button:has-text("Services & Pricing")').isVisible();
+      await page.waitForTimeout(500);
+      const mobileMenuVisible = await page.locator('div.lg\\:hidden button:has-text("Services & Pricing")').isVisible();
       recordResult('Mobile Menu Opens with Navigation Links', mobileMenuVisible);
     }
 
