@@ -1,0 +1,117 @@
+{
+  "entities": {
+    "Service": {
+      "title": "Service",
+      "description": "Nail artistry and salon service item",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 500 },
+        "price": { "type": "number" },
+        "durationMinutes": { "type": "number" },
+        "category": { "type": "string", "maxLength": 50 },
+        "imageUrl": { "type": "string", "maxLength": 2048 },
+        "isActive": { "type": "boolean" },
+        "isFeatured": { "type": "boolean" }
+      },
+      "required": ["name", "description", "price", "durationMinutes", "isActive"]
+    },
+    "SlotLock": {
+      "title": "SlotLock",
+      "description": "Atomic reservation lock for time slot conflict prevention",
+      "type": "object",
+      "properties": {
+        "slotKey": { "type": "string", "maxLength": 100 },
+        "appointmentDate": { "type": "string", "maxLength": 20 },
+        "startTime": { "type": "string", "maxLength": 20 },
+        "appointmentId": { "type": "string", "maxLength": 100 },
+        "status": { "type": "string", "enum": ["reserved", "available"] },
+        "updatedAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["slotKey", "appointmentDate", "startTime", "status"]
+    },
+    "Appointment": {
+      "title": "Appointment",
+      "description": "Client appointment booking voucher and session record",
+      "type": "object",
+      "properties": {
+        "customerId": { "type": "string", "maxLength": 100 },
+        "customerName": { "type": "string", "maxLength": 100 },
+        "customerEmail": { "type": "string", "maxLength": 150 },
+        "customerPhone": { "type": "string", "maxLength": 30 },
+        "customerNotes": { "type": "string", "maxLength": 500 },
+        "serviceId": { "type": "string", "maxLength": 100 },
+        "serviceName": { "type": "string", "maxLength": 100 },
+        "servicePrice": { "type": "number" },
+        "serviceDurationMinutes": { "type": "number" },
+        "appointmentDate": { "type": "string", "maxLength": 20 },
+        "startTime": { "type": "string", "maxLength": 20 },
+        "endTime": { "type": "string", "maxLength": 20 },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "completed", "cancelled", "rescheduled"] },
+        "isHomeService": { "type": "boolean" },
+        "homeServiceAddress": { "type": "string", "maxLength": 300 },
+        "hasInspo": { "type": "boolean" },
+        "inspoImageUrl": { "type": "string", "maxLength": 2048 },
+        "cancellationReason": { "type": "string", "maxLength": 300 },
+        "rescheduleReason": { "type": "string", "maxLength": 300 },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["customerName", "customerEmail", "customerPhone", "serviceName", "servicePrice", "appointmentDate", "startTime", "status"]
+    },
+    "BusinessSettings": {
+      "title": "BusinessSettings",
+      "description": "Owner business hours, contacts, and home-service toggles",
+      "type": "object",
+      "properties": {
+        "businessName": { "type": "string", "maxLength": 100 },
+        "tagline": { "type": "string", "maxLength": 200 },
+        "instagramHandle": { "type": "string", "maxLength": 50 },
+        "instagramUrl": { "type": "string", "maxLength": 200 },
+        "contactPhone": { "type": "string", "maxLength": 30 },
+        "contactEmail": { "type": "string", "maxLength": 100 },
+        "location": { "type": "string", "maxLength": 200 },
+        "openingTime": { "type": "string", "maxLength": 20 },
+        "closingTime": { "type": "string", "maxLength": 20 },
+        "slotIntervalMinutes": { "type": "number" },
+        "homeServiceEnabled": { "type": "boolean" },
+        "homeServiceNotice": { "type": "string", "maxLength": 500 }
+      },
+      "required": ["businessName", "contactPhone", "location", "openingTime", "closingTime"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated user profile record",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 150 },
+        "displayName": { "type": "string", "maxLength": 100 },
+        "phone": { "type": "string", "maxLength": 30 },
+        "role": { "type": "string", "enum": ["customer", "admin"] }
+      },
+      "required": ["uid", "email", "role"]
+    }
+  },
+  "firestore": {
+    "/services/{serviceId}": {
+      "schema": { "$ref": "#/entities/Service" },
+      "description": "Public catalog of nail services and prices"
+    },
+    "/slot_locks/{lockId}": {
+      "schema": { "$ref": "#/entities/SlotLock" },
+      "description": "Slot occupancy markers for preventing double-bookings"
+    },
+    "/appointments/{appointmentId}": {
+      "schema": { "$ref": "#/entities/Appointment" },
+      "description": "Client appointment reservations and history"
+    },
+    "/business_settings/main": {
+      "schema": { "$ref": "#/entities/BusinessSettings" },
+      "description": "Salon operational settings and availability configurations"
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profile with role flags"
+    }
+  }
+}

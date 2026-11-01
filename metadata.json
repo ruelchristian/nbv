@@ -1,0 +1,8 @@
+{
+  "name": "Nails By Vril - Appointment & Client Management System",
+  "description": "Web-based online appointment booking, schedule management, client records, and business analytics for Nails By Vril nail salon.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
