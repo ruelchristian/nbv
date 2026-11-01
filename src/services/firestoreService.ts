@@ -96,21 +96,12 @@ export const firestoreService = {
   // 1. SERVICES
   async getServices(): Promise<Service[]> {
     try {
-      const snap = await getDocs(collection(db, SERVICES_COL));
-      if (snap.empty) {
-        // Seed the 4 required services if permitted
-        try {
-          const seeded: Service[] = [];
-          for (const item of INITIAL_SERVICES) {
-            const newDocRef = doc(collection(db, SERVICES_COL));
-            const serviceItem: Service = { ...item, id: newDocRef.id };
-            await setDoc(newDocRef, serviceItem);
-            seeded.push(serviceItem);
-          }
-          return seeded;
-        } catch {
-          return DEFAULT_SERVICES;
-        }
+      const snap = await Promise.race([
+        getDocs(collection(db, SERVICES_COL)),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500)),
+      ]);
+      if (!snap || snap.empty) {
+        return DEFAULT_SERVICES;
       }
       const allServices = snap.docs.map((d) => ({ ...d.data(), id: d.id } as Service));
 
@@ -287,7 +278,7 @@ export const firestoreService = {
         return STANDARD_TIME_SLOTS.map((t) => ({ time: t, isAvailable: false, reason: 'Past Date' }));
       }
 
-      // Fetch slot locks for this date
+      // Fetch slot locks for this date with resilient timeout
       const reservedTimes = new Set<string>();
       try {
         const q = query(
@@ -295,11 +286,16 @@ export const firestoreService = {
           where('appointmentDate', '==', dateStr),
           where('status', '==', 'reserved')
         );
-        const locksSnap = await getDocs(q);
-        locksSnap.docs.forEach((d) => {
-          const startTime = d.data().startTime as string;
-          if (startTime) reservedTimes.add(startTime);
-        });
+        const locksSnap = await Promise.race([
+          getDocs(q),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500)),
+        ]);
+        if (locksSnap) {
+          locksSnap.docs.forEach((d) => {
+            const startTime = d.data().startTime as string;
+            if (startTime) reservedTimes.add(startTime);
+          });
+        }
       } catch (cloudErr) {
         console.warn('Slot locks fetch note, checking local device reservations:', cloudErr);
       }
