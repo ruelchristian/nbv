@@ -81,17 +81,16 @@ async function runTest() {
       await studioSiteLink.click();
       await page.waitForTimeout(600);
 
-      // 8. Top Admin Preview Banner is visible
+      // 8. Top Admin Preview Banner is cleanly removed (clean UI)
       const adminPreviewTop = page.locator('text=Viewing Live Studio Website');
-      assert(await adminPreviewTop.isVisible(), 'Admin Preview Banner is visible when viewing public site');
+      assert((await adminPreviewTop.count()) === 0, 'Admin Preview Banner is cleanly omitted for a clutter-free UI');
 
-      // 9. Homepage Hero shows "Open Owner Portal" instead of forcing booking
+      // 9. Homepage Hero shows "Open Owner Portal" for logged-in Admin
       const heroAdminBtn = page.locator('section button:has-text("Open Owner Portal")');
       assert(await heroAdminBtn.isVisible(), 'Homepage Hero shows "Open Owner Portal" for logged-in Admin');
 
-      // 10. Click Return to Owner Portal
-      const returnBtn = page.getByRole('button', { name: /Return to Owner Portal/i });
-      await returnBtn.click();
+      // 10. Click Owner Portal in Navbar
+      await adminOwnerPortal.click();
       await page.waitForTimeout(800);
     } else {
       await adminOwnerPortal.click();

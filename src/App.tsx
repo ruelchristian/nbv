@@ -374,28 +374,6 @@ export default function App() {
         onOpenDownloadModal={() => setIsDownloadModalOpen(true)}
       />
 
-      {/* Admin Mode Top Navigation Banner when browsing public site */}
-      {isAdmin && currentTab !== 'admin' && (
-        <div className="bg-[#8B3A56] text-white py-2 px-4 sm:px-6 shadow-xs text-xs flex flex-wrap items-center justify-between gap-2 z-30">
-          <div className="flex items-center gap-2">
-            <ShieldIcon className="w-3.5 h-3.5 text-[#F3B8C3]" />
-            <span>
-              Logged in as Admin (<strong>{currentUser?.email}</strong>) — Viewing Live Studio Website
-            </span>
-          </div>
-          <button
-            onClick={() => {
-              setCurrentTab('admin');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            className="px-3 py-1 rounded-full bg-white text-[#8B3A56] font-semibold text-[11px] hover:bg-[#FAF4F5] transition-colors shadow-2xs cursor-pointer flex items-center gap-1"
-          >
-            <span>Return to Owner Portal</span>
-            <ArrowRight className="w-3 h-3" />
-          </button>
-        </div>
-      )}
-
       {/* Main Page Router */}
       <main className="flex-1 w-full overflow-y-visible">
         {isLoading && services.length === 0 ? (
