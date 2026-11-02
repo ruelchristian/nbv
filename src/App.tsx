@@ -9,7 +9,6 @@ import { User as UserIcon, Shield as ShieldIcon, LogIn } from 'lucide-react';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { NotificationBanner } from './components/NotificationBanner';
-import { FlutterCompanionModal } from './components/FlutterCompanionModal';
 import { DownloadAppModal } from './components/DownloadAppModal';
 import { ConfirmedLocationModal } from './components/ConfirmedLocationQR';
 import { HomePage } from './pages/HomePage';
@@ -26,7 +25,6 @@ export default function App() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [selectedServiceForBooking, setSelectedServiceForBooking] = useState<Service | null>(null);
-  const [isFlutterModalOpen, setIsFlutterModalOpen] = useState<boolean>(false);
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState<boolean>(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState<boolean>(false);
   const [tokenWarning, setTokenWarning] = useState<string | null>(null);
@@ -524,7 +522,6 @@ export default function App() {
           setCurrentTab(tab);
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
-        onOpenCompanionModal={() => setIsFlutterModalOpen(true)}
         onOpenDownloadModal={() => setIsDownloadModalOpen(true)}
         onOpenLocationQRModal={() => setIsLocationModalOpen(true)}
         onSignIn={handleSignIn}
@@ -534,7 +531,6 @@ export default function App() {
       <DownloadAppModal
         isOpen={isDownloadModalOpen}
         onClose={() => setIsDownloadModalOpen(false)}
-        onOpenFlutterCode={() => setIsFlutterModalOpen(true)}
       />
 
       {/* Confirmed Studio Location & Google Maps QR Code Modal */}
@@ -543,12 +539,6 @@ export default function App() {
         onClose={() => setIsLocationModalOpen(false)}
         customerName={currentUser?.displayName || undefined}
         isConfirmed={false}
-      />
-
-      {/* Exportable Flutter/Dart Code Companion Modal */}
-      <FlutterCompanionModal
-        isOpen={isFlutterModalOpen}
-        onClose={() => setIsFlutterModalOpen(false)}
       />
     </div>
   );

@@ -18,13 +18,11 @@ import {
 interface DownloadAppModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onOpenFlutterCode?: () => void;
 }
 
 export const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
   isOpen,
   onClose,
-  onOpenFlutterCode,
 }) => {
   const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
   const [installSuccess, setInstallSuccess] = useState(false);
@@ -181,21 +179,14 @@ export const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
           </div>
         </div>
 
-        {/* Footer / Mobile Developer Companion Option */}
-        {onOpenFlutterCode && (
-          <div className="pt-3 border-t border-[#EFE8E9] flex items-center justify-between text-xs text-[#7A6E74]">
-            <span>Need native Flutter APK/source code?</span>
-            <button
-              onClick={() => {
-                onClose();
-                onOpenFlutterCode();
-              }}
-              className="text-[#8B3A56] hover:underline font-semibold cursor-pointer"
-            >
-              View Flutter Companion Project
-            </button>
-          </div>
-        )}
+        {/* PWA Direct Installation Info */}
+        <div className="pt-3 border-t border-[#EFE8E9] flex items-center justify-between text-xs text-[#7A6E74]">
+          <span className="flex items-center gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span>Pure Progressive Web App (PWA) • Works on iPhone, Android &amp; Desktop</span>
+          </span>
+          <span className="text-[11px] font-semibold text-[#8B3A56]">No App Store Required</span>
+        </div>
       </div>
     </div>
   );

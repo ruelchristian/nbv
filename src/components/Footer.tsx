@@ -8,7 +8,6 @@ interface FooterProps {
   onSelectTab: (tab: string) => void;
   currentUser?: { email?: string | null; displayName?: string | null } | null;
   isAdmin?: boolean;
-  onOpenCompanionModal?: () => void;
   onOpenDownloadModal?: () => void;
   onOpenLocationQRModal?: () => void;
   onSignIn?: () => void;
@@ -19,7 +18,6 @@ export const Footer: React.FC<FooterProps> = ({
   onSelectTab,
   currentUser,
   isAdmin = false,
-  onOpenCompanionModal,
   onOpenDownloadModal,
   onOpenLocationQRModal,
   onSignIn,
