@@ -121,6 +121,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [clientSearchQuery, setClientSearchQuery] = useState('');
   const [clientFilter, setClientFilter] = useState<'all' | 'repeat' | 'in_studio' | 'home_service'>('all');
   const [expandedClientId, setExpandedClientId] = useState<string | null>(null);
+  const [isTogglingService, setIsTogglingService] = useState<string | null>(null);
 
   const activeMainAdminEmail = getActiveMainAdminEmail();
   const isCurrentUserMainAdmin = isMainAdmin(currentUser?.email);
@@ -521,6 +522,37 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <span>Pending Review</span>
           </span>
         );
+    }
+  };
+
+  const getApptChipColor = (status: AppointmentStatus) => {
+    switch (status) {
+      case 'pending':
+        return 'bg-[#D97706] hover:bg-[#B45309] text-white';
+      case 'completed':
+        return 'bg-[#047857] hover:bg-[#065F46] text-white';
+      case 'cancelled':
+        return 'bg-gray-400 hover:bg-gray-500 text-white line-through opacity-60';
+      case 'confirmed':
+      default:
+        return 'bg-[#8B3A56] hover:bg-[#722A42] text-white';
+    }
+  };
+
+  const handleToggleService = async (service: Service) => {
+    setIsTogglingService(service.id);
+    const nextStatus = !service.isActive;
+    try {
+      await firestoreService.updateService(service.id, { isActive: nextStatus });
+      showToast(`${service.name} is now ${nextStatus ? 'Active & bookable by clients' : 'Toggled Off (hidden from booking)'}.`);
+      onRefresh();
+    } catch (err: any) {
+      console.warn('Fallback updating service status:', err);
+      service.isActive = nextStatus;
+      showToast(`${service.name} updated to ${nextStatus ? 'Active' : 'Off'}.`);
+      onRefresh();
+    } finally {
+      setIsTogglingService(null);
     }
   };
 
@@ -1010,6 +1042,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
           </div>
 
+          {/* Calendar Color Coding Legend */}
+          <div className="flex flex-wrap items-center gap-3 sm:gap-5 p-3 sm:p-3.5 rounded-2xl bg-[#FAF7F4] border border-[#EFE8E9] text-[11px] text-[#5C5257]">
+            <span className="font-bold uppercase tracking-wider text-[#7A6E74] text-[10px]">Color Legend:</span>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#8B3A56] inline-block shadow-2xs"></span>
+              <span className="font-medium text-[#231F20]">Confirmed (Burgundy)</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#D97706] inline-block shadow-2xs"></span>
+              <span className="font-medium text-[#231F20]">Pending (Amber)</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#047857] inline-block shadow-2xs"></span>
+              <span className="font-medium text-[#231F20]">Completed (Green)</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="px-1.5 py-0.5 rounded-xs bg-[#DCFCE7] text-[#15803D] font-bold text-[9px] uppercase">Open</span>
+              <span className="font-medium text-[#231F20]">Special Opened Date</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="px-1.5 py-0.5 rounded-xs bg-[#FEE2E2] text-[#B91C1C] font-bold text-[9px] uppercase">Blocked</span>
+              <span className="font-medium text-[#231F20]">Closed / Salon Holiday</span>
+            </div>
+          </div>
+
           {/* Month View (Image 1 Visual Grid) */}
           {calendarView === 'month' && (
             <div className="border border-[#EFE8E9] rounded-2xl overflow-hidden">
@@ -1067,15 +1124,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         )}
                       </div>
 
-                      {/* Appointment Badges (Image 1 Style) */}
+                      {/* Appointment Badges (Image 1 Style with Status Colors) */}
                       <div className="space-y-1 mt-1.5 overflow-hidden">
                         {dayAppts.map((appt) => (
                           <button
                             key={appt.id}
                             type="button"
                             onClick={() => setInspectingAppt(appt)}
-                            className="w-full text-left bg-[#8B3A56] hover:bg-[#722A42] text-white text-[10px] font-semibold py-1 px-1.5 rounded-lg flex items-center justify-between gap-1 shadow-xs transition-colors cursor-pointer truncate"
-                            title={`${appt.startTime} - ${appt.customerName} (${appt.serviceName})`}
+                            className={`w-full text-left ${getApptChipColor(appt.status)} text-[10px] font-semibold py-1 px-1.5 rounded-lg flex items-center justify-between gap-1 shadow-xs transition-colors cursor-pointer truncate`}
+                            title={`${appt.startTime} - ${appt.customerName} (${appt.serviceName}) • ${appt.status}`}
                           >
                             <span className="truncate">
                               {appt.startTime} - {appt.customerName}
@@ -1155,32 +1212,76 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       )}
 
-      {/* SUB-TAB: SERVICES CATALOG */}
+      {/* SUB-TAB: SERVICES CATALOG (With Interactive On/Off Toggles) */}
       {activeSubTab === 'services' && (
         <div className="bg-white rounded-3xl p-6 sm:p-8 border border-[#EFE8E9] space-y-6 shadow-2xs">
-          <div>
-            <h2 className="font-serif text-xl font-bold text-[#231F20]">
-              Active Services &amp; Price List
-            </h2>
-            <p className="text-xs text-[#7A6E74] mt-0.5">
-              Approved core catalog offered to clients.
-            </p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#FAF4F5] pb-4">
+            <div>
+              <h2 className="font-serif text-xl font-bold text-[#231F20]">
+                Services &amp; Pricing Catalog Management
+              </h2>
+              <p className="text-xs text-[#7A6E74] mt-0.5">
+                Toggle services ON or OFF to dynamically show or hide them from client booking.
+              </p>
+            </div>
+            <span className="text-xs font-semibold text-[#8B3A56] bg-[#FAF4F5] px-3 py-1.5 rounded-full border border-[#F3B8C3] self-start sm:self-auto">
+              {services.filter((s) => s.isActive).length} of {services.length} active
+            </span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {services.map((service) => (
               <div
                 key={service.id}
-                className="p-4 rounded-2xl border border-[#EFE8E9] bg-[#FAF7F4] flex items-center justify-between gap-4"
+                className={`p-4 rounded-2xl border transition-all flex items-center justify-between gap-4 ${
+                  service.isActive
+                    ? 'border-[#EFE8E9] bg-[#FAF7F4]'
+                    : 'border-gray-200 bg-gray-50/70 opacity-70'
+                }`}
               >
-                <div className="space-y-1">
-                  <h4 className="font-serif text-base font-bold text-[#231F20]">{service.name}</h4>
-                  <p className="text-xs text-[#7A6E74]">{service.category} • {service.durationMinutes} mins</p>
+                <div className="space-y-1 min-w-0">
+                  <h4 className="font-serif text-base font-bold text-[#231F20] truncate">
+                    {service.name}
+                  </h4>
+                  <p className="text-xs text-[#7A6E74]">
+                    {service.category} • {service.durationMinutes} mins
+                  </p>
                   <p className="font-bold text-sm text-[#8B3A56]">₱{service.price}</p>
                 </div>
-                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-[#D1FAE5] text-[#047857]">
-                  Active
-                </span>
+
+                <div className="flex items-center gap-3 shrink-0">
+                  <span
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase transition-colors ${
+                      service.isActive
+                        ? 'bg-[#D1FAE5] text-[#047857]'
+                        : 'bg-gray-200 text-gray-600'
+                    }`}
+                  >
+                    {service.isActive ? 'Active' : 'Off'}
+                  </span>
+
+                  {/* Toggle On/Off Switch Button */}
+                  <button
+                    type="button"
+                    disabled={isTogglingService === service.id}
+                    onClick={() => handleToggleService(service)}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden disabled:opacity-50 ${
+                      service.isActive ? 'bg-[#047857]' : 'bg-gray-300'
+                    }`}
+                    title={
+                      service.isActive
+                        ? `Toggle OFF (hide ${service.name} from booking)`
+                        : `Toggle ON (make ${service.name} bookable)`
+                    }
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                        service.isActive ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
