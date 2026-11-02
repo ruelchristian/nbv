@@ -49,10 +49,21 @@ const envAdminEmails: string[] = typeof import.meta !== 'undefined' && import.me
   : [];
 
 export const MAIN_ADMIN_EMAIL = 'rayanat.barbosa@gmail.com';
+const LOCAL_STORAGE_MAIN_ADMIN_KEY = 'nails_by_vril_main_admin';
+
+export function getActiveMainAdminEmail(): string {
+  try {
+    const custom = localStorage.getItem(LOCAL_STORAGE_MAIN_ADMIN_KEY);
+    if (custom && custom.includes('@')) return custom.toLowerCase().trim();
+  } catch {
+    // Ignore
+  }
+  return MAIN_ADMIN_EMAIL.toLowerCase().trim();
+}
 
 export function isMainAdmin(email?: string | null): boolean {
   if (!email) return false;
-  return email.toLowerCase().trim() === MAIN_ADMIN_EMAIL.toLowerCase();
+  return email.toLowerCase().trim() === getActiveMainAdminEmail();
 }
 
 export const DEFAULT_ADMIN_EMAILS = [
@@ -283,6 +294,8 @@ export const firestoreService = {
       ...parsed,
       ...settings,
       blockedDates: Array.from(new Set(settings.blockedDates || parsed.blockedDates || [])),
+      workingDays: settings.workingDays || parsed.workingDays || DEFAULT_BUSINESS_SETTINGS.workingDays,
+      customAvailableDates: Array.from(new Set(settings.customAvailableDates || parsed.customAvailableDates || [])),
     };
 
     // 1. ALWAYS persist to local cache immediately so client wizard has blocked dates right away
@@ -317,18 +330,20 @@ export const firestoreService = {
       const localDateObj = new Date(year, month - 1, day);
       const dayOfWeek = localDateObj.getDay(); // 0 is Sun, 1 is Mon...
 
-      // Strictly enforce Sunday (0) and Monday (1) only
-      if (dayOfWeek !== 0 && dayOfWeek !== 1) {
+      // Check custom available dates: if date is explicitly enabled, it overrides standard closed days
+      const isCustomAvailable = Boolean(settings.customAvailableDates?.includes(dateStr));
+
+      // Check working days (if specified in settings, otherwise check default [0, 1])
+      const activeWorkingDays = settings.workingDays && settings.workingDays.length > 0
+        ? settings.workingDays
+        : [0, 1];
+
+      if (!isCustomAvailable && !activeWorkingDays.includes(dayOfWeek)) {
         return STANDARD_TIME_SLOTS.map((t) => ({
           time: t,
           isAvailable: false,
-          reason: 'Only Sundays & Mondays available',
+          reason: 'Salon Closed (Not a scheduled working day)',
         }));
-      }
-
-      // Check working days (if specified in settings, otherwise check [0, 1])
-      if (settings.workingDays && settings.workingDays.length > 0 && !settings.workingDays.includes(dayOfWeek)) {
-        return STANDARD_TIME_SLOTS.map((t) => ({ time: t, isAvailable: false, reason: 'Only Sundays & Mondays available' }));
       }
 
       // Check blocked dates
@@ -737,9 +752,10 @@ export const firestoreService = {
 
   // 6. DYNAMIC ADMIN ACCOUNTS MANAGEMENT
   async getAdminsList(): Promise<AdminAccount[]> {
+    const currentMain = getActiveMainAdminEmail();
     const mainAdminItem: AdminAccount = {
-      id: MAIN_ADMIN_EMAIL.replace(/[^a-zA-Z0-9]/g, '_'),
-      email: MAIN_ADMIN_EMAIL,
+      id: currentMain.replace(/[^a-zA-Z0-9]/g, '_'),
+      email: currentMain,
       role: 'main_admin',
     };
 
@@ -759,8 +775,15 @@ export const firestoreService = {
     // Merge from local storage backup
     const local = getLocalAdmins();
     local.forEach((acc) => {
-      if (!isMainAdmin(acc.email) && !list.some((item) => item.email.toLowerCase() === acc.email.toLowerCase())) {
-        list.push(acc);
+      const email = acc.email.toLowerCase().trim();
+      const existing = list.find((item) => item.email.toLowerCase() === email);
+      if (existing) {
+        existing.role = isMainAdmin(email) ? 'main_admin' : 'sub_admin';
+      } else {
+        list.push({
+          ...acc,
+          role: isMainAdmin(email) ? 'main_admin' : 'sub_admin',
+        });
       }
     });
 
@@ -773,26 +796,33 @@ export const firestoreService = {
         snap.forEach((d) => {
           const data = d.data();
           const email = (data.email || d.id || '').toLowerCase().trim();
-          if (email && email.includes('@') && !list.some((item) => item.email.toLowerCase() === email)) {
-            list.push({
-              id: d.id,
-              email,
-              role: isMainAdmin(email) ? 'main_admin' : 'sub_admin',
-              createdAt: data.createdAt,
-              addedBy: data.addedBy,
-            });
+          if (email && email.includes('@')) {
+            const role = data.role === 'main_admin' || isMainAdmin(email) ? 'main_admin' : 'sub_admin';
+            const existing = list.find((item) => item.email.toLowerCase() === email);
+            if (existing) {
+              existing.role = role;
+            } else {
+              list.push({
+                id: d.id,
+                email,
+                role,
+                createdAt: data.createdAt,
+                addedBy: data.addedBy,
+              });
+            }
           }
         });
       }
     } catch (e) {
       console.warn('Notice loading admins list from Firestore:', e);
     }
-    return list;
+    return list.sort((a, b) => (a.role === 'main_admin' ? -1 : b.role === 'main_admin' ? 1 : 0));
   },
 
   async addAdminEmail(email: string, actingUserEmail?: string): Promise<void> {
+    const currentMain = getActiveMainAdminEmail();
     if (actingUserEmail && !isMainAdmin(actingUserEmail)) {
-      throw new Error(`Permission denied: Only the Main Admin (${MAIN_ADMIN_EMAIL}) can add sub-admins.`);
+      throw new Error(`Permission denied: Only the Main Admin (${currentMain}) can add sub-admins.`);
     }
 
     const cleanEmail = email.toLowerCase().trim();
@@ -809,7 +839,7 @@ export const firestoreService = {
       email: cleanEmail,
       role: 'sub_admin',
       createdAt: new Date().toISOString(),
-      addedBy: actingUserEmail || MAIN_ADMIN_EMAIL,
+      addedBy: actingUserEmail || currentMain,
     };
 
     // Update local storage backup immediately
@@ -834,8 +864,9 @@ export const firestoreService = {
       throw new Error('The Main Admin account cannot be removed.');
     }
 
+    const currentMain = getActiveMainAdminEmail();
     if (actingUserEmail && !isMainAdmin(actingUserEmail)) {
-      throw new Error(`Permission denied: Only the Main Admin (${MAIN_ADMIN_EMAIL}) can remove sub-admins.`);
+      throw new Error(`Permission denied: Only the Main Admin (${currentMain}) can remove sub-admins.`);
     }
 
     // Update local storage backup immediately
@@ -850,6 +881,93 @@ export const firestoreService = {
       ]);
     } catch (e) {
       console.warn('Removed sub-admin locally while awaiting auth token propagation:', e);
+    }
+  },
+
+  async transferMainAdminRole(newAdminEmail: string, actingUserEmail?: string): Promise<void> {
+    const cleanNew = newAdminEmail.toLowerCase().trim();
+    if (!cleanNew || !cleanNew.includes('@')) {
+      throw new Error('Please specify a valid email address to transfer Main Admin role to.');
+    }
+
+    const currentMain = getActiveMainAdminEmail();
+    if (actingUserEmail && !isMainAdmin(actingUserEmail)) {
+      throw new Error(`Permission denied: Only the current Main Admin (${currentMain}) can transfer ownership.`);
+    }
+
+    if (cleanNew === currentMain) {
+      throw new Error('This user is already the Main Admin.');
+    }
+
+    // 1. Update dynamic active main admin
+    try {
+      localStorage.setItem(LOCAL_STORAGE_MAIN_ADMIN_KEY, cleanNew);
+    } catch {
+      // Ignore
+    }
+
+    // 2. Update local admins list
+    const local = getLocalAdmins();
+    const updated = local.map((a) => {
+      if (a.email.toLowerCase() === currentMain) {
+        return { ...a, role: 'sub_admin' as const };
+      }
+      if (a.email.toLowerCase() === cleanNew) {
+        return { ...a, role: 'main_admin' as const };
+      }
+      return a;
+    });
+
+    if (!updated.some((a) => a.email.toLowerCase() === currentMain)) {
+      updated.push({
+        id: currentMain.replace(/[^a-zA-Z0-9]/g, '_'),
+        email: currentMain,
+        role: 'sub_admin',
+        createdAt: new Date().toISOString(),
+      });
+    }
+
+    if (!updated.some((a) => a.email.toLowerCase() === cleanNew)) {
+      updated.push({
+        id: cleanNew.replace(/[^a-zA-Z0-9]/g, '_'),
+        email: cleanNew,
+        role: 'main_admin',
+        createdAt: new Date().toISOString(),
+      });
+    }
+
+    saveLocalAdmins(updated);
+
+    // 3. Write to Firestore
+    try {
+      const batch = writeBatch(db);
+      // Promote new main admin
+      batch.set(doc(db, ADMINS_COL, cleanNew), {
+        email: cleanNew,
+        role: 'main_admin',
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
+      batch.set(doc(db, ADMINS_COL, cleanNew.replace(/[^a-zA-Z0-9]/g, '_')), {
+        email: cleanNew,
+        role: 'main_admin',
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
+
+      // Demote previous main admin to sub_admin
+      batch.set(doc(db, ADMINS_COL, currentMain), {
+        email: currentMain,
+        role: 'sub_admin',
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
+      batch.set(doc(db, ADMINS_COL, currentMain.replace(/[^a-zA-Z0-9]/g, '_')), {
+        email: currentMain,
+        role: 'sub_admin',
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
+
+      await batch.commit();
+    } catch (e) {
+      console.warn('Recorded Main Admin transfer locally while awaiting Firestore batch:', e);
     }
   },
 };

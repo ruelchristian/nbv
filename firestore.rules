@@ -12,11 +12,13 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Main Admin: Rayana has exclusive primary ownership & authority to manage sub-admins
+    // Main Admin: Rayana by default or any admin designated with role == 'main_admin' in Firestore
     function isMainAdmin() {
       return isSignedIn() && (
         request.auth.token.email.matches('(?i)^rayanat\\.barbosa@gmail\\.com$') ||
-        request.auth.token.email == 'rayanat.barbosa@gmail.com'
+        request.auth.token.email == 'rayanat.barbosa@gmail.com' ||
+        (request.auth.token.email != null && exists(/databases/$(database)/documents/admins/$(request.auth.token.email)) && get(/databases/$(database)/documents/admins/$(request.auth.token.email)).data.role == 'main_admin') ||
+        (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'main_admin')
       );
     }
 
@@ -107,7 +109,7 @@ service cloud.firestore {
       allow create, update: if isSignedIn() && request.auth.uid == userId;
     }
 
-    // Admin accounts: Only the Main Admin (Rayana) can add or remove sub-admins
+    // Admin accounts: Only the Main Admin can add, remove, or transfer roles
     match /admins/{adminId} {
       allow read: if isSignedIn();
       allow write: if isMainAdmin();

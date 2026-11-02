@@ -105,7 +105,7 @@ async function runRolesTest() {
     record('New Admin Given "Sub-Admin" Role Badge', hasSubBadge);
 
     // Verify Sub-Admin CAN be removed (Revoke button exists)
-    const subAdminTrashBtn = page.locator(`button[title*="${testSubAdminEmail}" i]`);
+    const subAdminTrashBtn = page.locator(`button[title*="Revoke Sub-Admin Access for ${testSubAdminEmail}" i]`);
     const canBeRemoved = await subAdminTrashBtn.isVisible();
     record('Sub-Admin Can Be Removed (Trash/Revoke Button Visible to Main Admin)', canBeRemoved);
 
@@ -131,7 +131,7 @@ async function runRolesTest() {
     await page.waitForTimeout(800);
 
     // Verify Sub-Admin badge in header
-    const headerSubAdminBadge = await page.locator('div:has(h1:has-text("Owner & Studio Portal")) span:has-text("Sub-Admin")').first().isVisible();
+    const headerSubAdminBadge = await page.locator('div:has(h1:has-text("Studio Management & Analytics")) span:has-text("Sub-Admin")').first().isVisible();
     record('Sub-Admin has Sub-Admin Badge in Header', headerSubAdminBadge);
 
     // Go to Settings tab
