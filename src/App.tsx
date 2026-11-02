@@ -194,11 +194,7 @@ export default function App() {
 
       const cleaned = (fetchedServices && fetchedServices.length > 0 ? fetchedServices : DEFAULT_SERVICES)
         .filter((s) => !s.name.toLowerCase().includes('screaming flower'));
-      setServices(
-        cleaned.some((s) => s.name.toLowerCase().includes('hardgel') || s.name.toLowerCase().includes('biab'))
-          ? cleaned
-          : DEFAULT_SERVICES
-      );
+      setServices(cleaned);
       setSettings(fetchedSettings || DEFAULT_BUSINESS_SETTINGS);
 
       // Load appointments

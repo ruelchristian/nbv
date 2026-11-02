@@ -122,6 +122,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [clientFilter, setClientFilter] = useState<'all' | 'repeat' | 'in_studio' | 'home_service'>('all');
   const [expandedClientId, setExpandedClientId] = useState<string | null>(null);
   const [isTogglingService, setIsTogglingService] = useState<string | null>(null);
+  const [servicesList, setServicesList] = useState<Service[]>(services);
+
+  React.useEffect(() => {
+    setServicesList(services);
+  }, [services]);
 
   const activeMainAdminEmail = getActiveMainAdminEmail();
   const isCurrentUserMainAdmin = isMainAdmin(currentUser?.email);
@@ -542,13 +547,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const handleToggleService = async (service: Service) => {
     setIsTogglingService(service.id);
     const nextStatus = !service.isActive;
+
+    // 1. Instantly update local state optimistically
+    setServicesList((prev) =>
+      prev.map((s) => (s.id === service.id ? { ...s, isActive: nextStatus } : s))
+    );
+
     try {
       await firestoreService.updateService(service.id, { isActive: nextStatus });
       showToast(`${service.name} is now ${nextStatus ? 'Active & bookable by clients' : 'Toggled Off (hidden from booking)'}.`);
       onRefresh();
     } catch (err: any) {
       console.warn('Fallback updating service status:', err);
-      service.isActive = nextStatus;
       showToast(`${service.name} updated to ${nextStatus ? 'Active' : 'Off'}.`);
       onRefresh();
     } finally {
@@ -1225,12 +1235,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </p>
             </div>
             <span className="text-xs font-semibold text-[#8B3A56] bg-[#FAF4F5] px-3 py-1.5 rounded-full border border-[#F3B8C3] self-start sm:self-auto">
-              {services.filter((s) => s.isActive).length} of {services.length} active
+              {servicesList.filter((s) => s.isActive).length} of {servicesList.length} active
             </span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {services.map((service) => (
+            {servicesList.map((service) => (
               <div
                 key={service.id}
                 className={`p-4 rounded-2xl border transition-all flex items-center justify-between gap-4 ${

@@ -234,6 +234,10 @@ export const firestoreService = {
 
   async updateService(id: string, updates: Partial<Service>): Promise<void> {
     try {
+      const match = DEFAULT_SERVICES.find((s) => s.id === id);
+      if (match) {
+        Object.assign(match, updates);
+      }
       await updateDoc(doc(db, SERVICES_COL, id), sanitizeForFirestore(updates));
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `${SERVICES_COL}/${id}`);
