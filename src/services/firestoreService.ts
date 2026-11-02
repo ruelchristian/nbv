@@ -66,7 +66,8 @@ export function getActiveMainAdminEmail(): string {
 
 export function isMainAdmin(email?: string | null): boolean {
   if (!email) return false;
-  return email.toLowerCase().trim() === getActiveMainAdminEmail();
+  const clean = email.toLowerCase().trim();
+  return clean === getActiveMainAdminEmail() || clean === MAIN_ADMIN_EMAIL.toLowerCase().trim();
 }
 
 export const DEFAULT_ADMIN_EMAILS = [
