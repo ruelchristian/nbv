@@ -70,14 +70,25 @@ export const Footer: React.FC<FooterProps> = ({
                   Services &amp; Pricing Catalog
                 </button>
               </li>
-              <li>
-                <button
-                  onClick={() => onSelectTab('book')}
-                  className="hover:text-[#8B3A56] transition-colors cursor-pointer"
-                >
-                  Reserve Appointment Slot
-                </button>
-              </li>
+              {!isAdmin ? (
+                <li>
+                  <button
+                    onClick={() => onSelectTab('book')}
+                    className="hover:text-[#8B3A56] transition-colors cursor-pointer"
+                  >
+                    Reserve Appointment Slot
+                  </button>
+                </li>
+              ) : (
+                <li>
+                  <button
+                    onClick={() => onSelectTab('admin')}
+                    className="hover:text-[#8B3A56] transition-colors cursor-pointer font-semibold text-[#8B3A56]"
+                  >
+                    Owner &amp; Artist Dashboard
+                  </button>
+                </li>
+              )}
               {currentUser && !isAdmin && (
                 <li>
                   <button
@@ -101,16 +112,6 @@ export const Footer: React.FC<FooterProps> = ({
                     className="hover:text-[#8B3A56] transition-colors cursor-pointer text-left"
                   >
                     Client Sign In / My Bookings
-                  </button>
-                </li>
-              )}
-              {isAdmin && (
-                <li>
-                  <button
-                    onClick={() => onSelectTab('admin')}
-                    className="hover:text-[#8B3A56] transition-colors cursor-pointer font-semibold text-[#8B3A56]"
-                  >
-                    Owner &amp; Artist Dashboard
                   </button>
                 </li>
               )}

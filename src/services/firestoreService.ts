@@ -419,18 +419,30 @@ export const firestoreService = {
   },
 
   // 4. ATOMIC BOOKING WITH DOUBLE-BOOKING PREVENTION
-  async createAppointmentAtomically(appointment: Omit<Appointment, 'id'>): Promise<Appointment> {
-    // 1. Validate that appointment date is strictly Sunday (0) or Monday (1)
-    const [year, month, day] = appointment.appointmentDate.split('-').map(Number);
-    const dayOfWeek = new Date(year, month - 1, day).getDay();
-    if (dayOfWeek !== 0 && dayOfWeek !== 1) {
-      throw new Error('Appointments can only be scheduled for Sundays and Mondays. Please select a Sunday or Monday.');
-    }
+  async createAppointmentAtomically(
+    appointment: Omit<Appointment, 'id'>,
+    options?: { isOwnerManualEntry?: boolean }
+  ): Promise<Appointment> {
+    const isOwner = options?.isOwnerManualEntry || appointment.status === 'confirmed';
 
-    // 2. Validate that date is not a blocked holiday date
-    const currentSettings = await firestoreService.getSettings();
-    if (currentSettings.blockedDates?.includes(appointment.appointmentDate)) {
-      throw new Error(`The date ${appointment.appointmentDate} is marked as a closed holiday. Please select an available Sunday or Monday.`);
+    // Public customer bookings must strictly respect working days and blocked holidays
+    if (!isOwner) {
+      const currentSettings = await firestoreService.getSettings();
+
+      // 1. Validate that date is not a blocked holiday date
+      if (currentSettings.blockedDates?.includes(appointment.appointmentDate)) {
+        throw new Error(`The date ${appointment.appointmentDate} is marked as closed or holiday. Please select an available open date.`);
+      }
+
+      // 2. Validate that appointment date is an open studio working day or custom available date
+      const [year, month, day] = appointment.appointmentDate.split('-').map(Number);
+      const dayOfWeek = new Date(year, month - 1, day).getDay();
+      const isCustom = currentSettings.customAvailableDates?.includes(appointment.appointmentDate);
+      const allowedDays = currentSettings.workingDays && currentSettings.workingDays.length > 0 ? currentSettings.workingDays : [0, 1];
+
+      if (!isCustom && !allowedDays.includes(dayOfWeek)) {
+        throw new Error('This date is not marked as an open working day. Please select an available schedule date.');
+      }
     }
 
     // 3. Validate Home Service vs In-Studio location requirements
@@ -453,10 +465,10 @@ export const firestoreService = {
     const newApptRef = doc(collection(db, APPOINTMENTS_COL));
     const lockRef = doc(db, SLOT_LOCKS_COL, lockId);
 
-    // CRITICAL: All new appointment requests must strictly remain 'pending' until owner reviews and confirms
+    // All standard customer requests default to 'pending'; owner direct walk-in entries can specify 'confirmed'
     const rawAppointment: Appointment = {
       ...appointment,
-      status: 'pending',
+      status: appointment.status || 'pending',
       id: newApptRef.id,
       isHomeService: isHome,
     };

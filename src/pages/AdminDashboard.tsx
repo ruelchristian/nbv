@@ -142,6 +142,83 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const successTimerRef = React.useRef<any>(null);
   const errorTimerRef = React.useRef<any>(null);
 
+  // Walk-In / Direct Manual Reservation State
+  const [isWalkInModalOpen, setIsWalkInModalOpen] = useState(false);
+  const [walkInClientName, setWalkInClientName] = useState('');
+  const [walkInClientPhone, setWalkInClientPhone] = useState('');
+  const [walkInClientEmail, setWalkInClientEmail] = useState('');
+  const [walkInClientInstagram, setWalkInClientInstagram] = useState('');
+  const [walkInServiceId, setWalkInServiceId] = useState<string>(services[0]?.id || 'srv-1');
+  const [walkInIsHome, setWalkInIsHome] = useState(false);
+  const [walkInAddress, setWalkInAddress] = useState('');
+  const [walkInDate, setWalkInDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [walkInTime, setWalkInTime] = useState('10:00 AM');
+  const [walkInStatus, setWalkInStatus] = useState<AppointmentStatus>('confirmed');
+  const [walkInPaymentType, setWalkInPaymentType] = useState<'cash' | 'gcash' | 'waived'>('cash');
+  const [walkInNotes, setWalkInNotes] = useState('');
+  const [isSubmittingWalkIn, setIsSubmittingWalkIn] = useState(false);
+  const [walkInError, setWalkInError] = useState<string | null>(null);
+
+  const handleCreateWalkInAppointment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!walkInClientName.trim()) {
+      setWalkInError('Please enter client full name.');
+      return;
+    }
+    if (!walkInClientPhone.trim()) {
+      setWalkInError('Please enter client contact number.');
+      return;
+    }
+    if (walkInIsHome && !walkInAddress.trim()) {
+      setWalkInError('Please provide home service address.');
+      return;
+    }
+
+    setIsSubmittingWalkIn(true);
+    setWalkInError(null);
+
+    const selectedSrv = servicesList.find((s) => s.id === walkInServiceId) || servicesList[0] || services[0];
+
+    try {
+      const newApptData: Omit<Appointment, 'id'> = {
+        customerId: `walkin-${Date.now()}`,
+        customerName: walkInClientName.trim(),
+        customerPhone: walkInClientPhone.trim(),
+        customerEmail: walkInClientEmail.trim() || `${walkInClientName.toLowerCase().replace(/\s+/g, '')}@walkin.guest`,
+        customerInstagram: walkInClientInstagram.trim() || undefined,
+        serviceId: selectedSrv.id,
+        serviceName: selectedSrv.name,
+        price: selectedSrv.price,
+        durationMinutes: selectedSrv.durationMinutes,
+        appointmentDate: walkInDate,
+        startTime: walkInTime,
+        status: walkInStatus,
+        isHomeService: walkInIsHome,
+        homeServiceAddress: walkInIsHome ? walkInAddress.trim() : undefined,
+        clientCount: 1,
+        notes: `[Manual Entry] Payment: ${walkInPaymentType.toUpperCase()}. ${walkInNotes}`.trim(),
+        createdAt: new Date().toISOString(),
+      };
+
+      await firestoreService.createAppointmentAtomically(newApptData, { isOwnerManualEntry: true });
+      showToast(`Walk-in appointment recorded for ${walkInClientName}!`);
+      setIsWalkInModalOpen(false);
+      // Reset form
+      setWalkInClientName('');
+      setWalkInClientPhone('');
+      setWalkInClientEmail('');
+      setWalkInClientInstagram('');
+      setWalkInNotes('');
+      setWalkInAddress('');
+      if (onRefresh) onRefresh();
+    } catch (err: unknown) {
+      console.error('Failed to create walk-in appointment:', err);
+      setWalkInError(err instanceof Error ? err.message : 'Failed to record walk-in appointment.');
+    } finally {
+      setIsSubmittingWalkIn(false);
+    }
+  };
+
   const showToast = (success?: string, error?: string) => {
     if (success) {
       if (successTimerRef.current) clearTimeout(successTimerRef.current);
@@ -840,7 +917,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               />
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Filter className="w-3.5 h-3.5 text-[#7A6E74]" />
               <select
                 value={statusFilter}
@@ -853,6 +930,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <option value="completed">Completed ({completedCount})</option>
                 <option value="cancelled">Cancelled</option>
               </select>
+
+              <button
+                type="button"
+                onClick={() => setIsWalkInModalOpen(true)}
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold uppercase tracking-wider text-white bg-[#8B3A56] hover:bg-[#722A42] transition-colors shadow-2xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Walk-In Booking</span>
+              </button>
             </div>
           </div>
 
@@ -1015,40 +1101,51 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </button>
             </div>
 
-            {/* View Switcher: Month | Week | Day */}
-            <div className="flex items-center bg-[#FAF7F4] p-1 rounded-xl border border-[#E5D5DA]">
+            <div className="flex flex-wrap items-center gap-2">
+              {/* View Switcher: Month | Week | Day */}
+              <div className="flex items-center bg-[#FAF7F4] p-1 rounded-xl border border-[#E5D5DA]">
+                <button
+                  type="button"
+                  onClick={() => setCalendarView('month')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    calendarView === 'month'
+                      ? 'bg-[#8B3A56] text-white shadow-xs'
+                      : 'text-[#7A6E74] hover:text-[#231F20]'
+                  }`}
+                >
+                  Month
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCalendarView('week')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    calendarView === 'week'
+                      ? 'bg-[#8B3A56] text-white shadow-xs'
+                      : 'text-[#7A6E74] hover:text-[#231F20]'
+                  }`}
+                >
+                  Week
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCalendarView('day')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    calendarView === 'day'
+                      ? 'bg-[#8B3A56] text-white shadow-xs'
+                      : 'text-[#7A6E74] hover:text-[#231F20]'
+                  }`}
+                >
+                  Day
+                </button>
+              </div>
+
               <button
                 type="button"
-                onClick={() => setCalendarView('month')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  calendarView === 'month'
-                    ? 'bg-[#8B3A56] text-white shadow-xs'
-                    : 'text-[#7A6E74] hover:text-[#231F20]'
-                }`}
+                onClick={() => setIsWalkInModalOpen(true)}
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold uppercase tracking-wider text-white bg-[#8B3A56] hover:bg-[#722A42] transition-colors shadow-2xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
               >
-                Month
-              </button>
-              <button
-                type="button"
-                onClick={() => setCalendarView('week')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  calendarView === 'week'
-                    ? 'bg-[#8B3A56] text-white shadow-xs'
-                    : 'text-[#7A6E74] hover:text-[#231F20]'
-                }`}
-              >
-                Week
-              </button>
-              <button
-                type="button"
-                onClick={() => setCalendarView('day')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  calendarView === 'day'
-                    ? 'bg-[#8B3A56] text-white shadow-xs'
-                    : 'text-[#7A6E74] hover:text-[#231F20]'
-                }`}
-              >
-                Day
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Walk-In</span>
               </button>
             </div>
           </div>
@@ -2158,6 +2255,260 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 {isProcessingAction ? 'Cancelling...' : 'Confirm Cancellation'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Walk-In / Manual Appointment Entry Modal */}
+      {isWalkInModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 space-y-5 shadow-2xl border border-[#F3B8C3] my-8 text-left">
+            <div className="flex items-center justify-between border-b border-[#FAF4F5] pb-3.5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-full bg-[#FCEBEE] text-[#8B3A56] flex items-center justify-center">
+                  <Plus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-serif text-lg font-bold text-[#231F20]">Add Walk-In / Direct Reservation</h3>
+                  <p className="text-xs text-[#7A6E74]">Record client booking from Instagram, phone, or in-person walk-in</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsWalkInModalOpen(false)}
+                className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {walkInError && (
+              <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{walkInError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleCreateWalkInAppointment} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="block text-xs font-semibold text-[#231F20] mb-1">
+                    Client Full Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Maria Santos"
+                    value={walkInClientName}
+                    onChange={(e) => setWalkInClientName(e.target.value)}
+                    className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#FAF7F4] border border-[#E5D5DA] focus:border-[#8B3A56] focus:outline-hidden"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#231F20] mb-1">
+                    Contact Phone <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="e.g. 0917 123 4567"
+                    value={walkInClientPhone}
+                    onChange={(e) => setWalkInClientPhone(e.target.value)}
+                    className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#FAF7F4] border border-[#E5D5DA] focus:border-[#8B3A56] focus:outline-hidden"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="block text-xs font-semibold text-[#231F20] mb-1">
+                    Instagram Handle (optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="@handle"
+                    value={walkInClientInstagram}
+                    onChange={(e) => setWalkInClientInstagram(e.target.value)}
+                    className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#FAF7F4] border border-[#E5D5DA] focus:border-[#8B3A56] focus:outline-hidden"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#231F20] mb-1">
+                    Email Address (optional)
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="client@gmail.com"
+                    value={walkInClientEmail}
+                    onChange={(e) => setWalkInClientEmail(e.target.value)}
+                    className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#FAF7F4] border border-[#E5D5DA] focus:border-[#8B3A56] focus:outline-hidden"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#231F20] mb-1">
+                  Selected Service <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={walkInServiceId}
+                  onChange={(e) => {
+                    setWalkInServiceId(e.target.value);
+                    const srv = servicesList.find((s) => s.id === e.target.value);
+                    if (srv?.isHomeService) setWalkInIsHome(true);
+                  }}
+                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#FAF7F4] border border-[#E5D5DA] focus:border-[#8B3A56] focus:outline-hidden font-medium text-[#231F20]"
+                >
+                  {servicesList.map((srv) => (
+                    <option key={srv.id} value={srv.id}>
+                      {srv.name} — ₱{srv.price} ({srv.durationMinutes} mins) {srv.isActive === false ? '[Toggled Off]' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-4 py-1">
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-[#231F20]">
+                  <input
+                    type="radio"
+                    name="walkInLocationType"
+                    checked={!walkInIsHome}
+                    onChange={() => setWalkInIsHome(false)}
+                    className="accent-[#8B3A56]"
+                  />
+                  <span>In-Studio Booking</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-[#231F20]">
+                  <input
+                    type="radio"
+                    name="walkInLocationType"
+                    checked={walkInIsHome}
+                    onChange={() => setWalkInIsHome(true)}
+                    className="accent-[#8B3A56]"
+                  />
+                  <span>Home Service</span>
+                </label>
+              </div>
+
+              {walkInIsHome && (
+                <div>
+                  <label className="block text-xs font-semibold text-[#231F20] mb-1">
+                    Home Service Address <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required={walkInIsHome}
+                    placeholder="Complete Unit / Street, Barangay, Pasig City"
+                    value={walkInAddress}
+                    onChange={(e) => setWalkInAddress(e.target.value)}
+                    className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#FAF7F4] border border-[#E5D5DA] focus:border-[#8B3A56] focus:outline-hidden"
+                  />
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="block text-xs font-semibold text-[#231F20] mb-1">
+                    Appointment Date <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={walkInDate}
+                    onChange={(e) => setWalkInDate(e.target.value)}
+                    className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#FAF7F4] border border-[#E5D5DA] focus:border-[#8B3A56] focus:outline-hidden"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#231F20] mb-1">
+                    Start Time Slot <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={walkInTime}
+                    onChange={(e) => setWalkInTime(e.target.value)}
+                    className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#FAF7F4] border border-[#E5D5DA] focus:border-[#8B3A56] focus:outline-hidden"
+                  >
+                    <option value="10:00 AM">10:00 AM</option>
+                    <option value="11:30 AM">11:30 AM</option>
+                    <option value="01:00 PM">01:00 PM</option>
+                    <option value="02:30 PM">02:30 PM</option>
+                    <option value="04:00 PM">04:00 PM</option>
+                    <option value="05:30 PM">05:30 PM</option>
+                    <option value="07:00 PM">07:00 PM</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="block text-xs font-semibold text-[#231F20] mb-1">
+                    Appointment Status
+                  </label>
+                  <select
+                    value={walkInStatus}
+                    onChange={(e) => setWalkInStatus(e.target.value as AppointmentStatus)}
+                    className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#FAF7F4] border border-[#E5D5DA] focus:border-[#8B3A56] focus:outline-hidden font-medium text-[#231F20]"
+                  >
+                    <option value="confirmed">Confirmed (Immediate Slot)</option>
+                    <option value="pending">Pending Review</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#231F20] mb-1">
+                    Payment Method
+                  </label>
+                  <select
+                    value={walkInPaymentType}
+                    onChange={(e) => setWalkInPaymentType(e.target.value as 'cash' | 'gcash' | 'waived')}
+                    className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#FAF7F4] border border-[#E5D5DA] focus:border-[#8B3A56] focus:outline-hidden font-medium text-[#231F20]"
+                  >
+                    <option value="cash">Cash at Studio</option>
+                    <option value="gcash">GCash (Paid)</option>
+                    <option value="waived">Deposit Waived / Special</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#231F20] mb-1">
+                  Notes &amp; Design Request
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. Client requested chrome french tips, almond shape"
+                  value={walkInNotes}
+                  onChange={(e) => setWalkInNotes(e.target.value)}
+                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#FAF7F4] border border-[#E5D5DA] focus:border-[#8B3A56] focus:outline-hidden"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#FAF4F5]">
+                <button
+                  type="button"
+                  onClick={() => setIsWalkInModalOpen(false)}
+                  className="px-4 py-2 rounded-full text-xs font-medium text-[#7A6E74] hover:bg-gray-100 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingWalkIn}
+                  className="px-6 py-2.5 rounded-full text-xs font-semibold uppercase tracking-wider text-white bg-[#8B3A56] hover:bg-[#722A42] transition-colors shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  {isSubmittingWalkIn ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Confirm &amp; Log Booking</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

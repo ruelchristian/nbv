@@ -25,13 +25,18 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const navItems = [
-    { id: 'home', label: 'Home' },
-    { id: 'services', label: 'Services & Pricing' },
-    { id: 'book', label: 'Book Appointment', highlight: true },
-    ...(currentUser && !isAdmin ? [{ id: 'customer', label: 'My Bookings', icon: User }] : []),
-    ...(currentUser && isAdmin ? [{ id: 'admin', label: 'Owner Portal', icon: Shield, badge: 'Admin' }] : []),
-  ];
+  const navItems = isAdmin
+    ? [
+        { id: 'home', label: 'Studio Site' },
+        { id: 'services', label: 'Services Catalog' },
+        { id: 'admin', label: 'Owner Portal', icon: Shield, highlight: true, badge: 'Admin' },
+      ]
+    : [
+        { id: 'home', label: 'Home' },
+        { id: 'services', label: 'Services & Pricing' },
+        { id: 'book', label: 'Book Appointment', highlight: true },
+        ...(currentUser ? [{ id: 'customer', label: 'My Bookings', icon: User }] : []),
+      ];
 
   return (
     <nav className="sticky top-0 z-40 bg-[#FAF7F4]/90 backdrop-blur-md border-b border-[#EFE8E9] transition-all">
@@ -56,8 +61,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                     onClick={() => onSelectTab(item.id)}
                     className="relative ml-2 px-4 xl:px-5 py-2.5 rounded-full text-xs font-semibold tracking-wider uppercase text-white bg-[#8B3A56] hover:bg-[#722A42] transition-colors shadow-sm flex items-center gap-1.5 cursor-pointer"
                   >
-                    <Sparkles className="w-3.5 h-3.5" />
+                    {item.icon ? <item.icon className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
                     <span>{item.label}</span>
+                    {item.badge && (
+                      <span className="ml-1 px-1.5 py-0.5 text-[9px] font-bold rounded-full bg-white/20 text-white uppercase tracking-wider">
+                        {item.badge}
+                      </span>
+                    )}
                   </button>
                 );
               }
@@ -125,13 +135,23 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Mobile & Tablet Menu Button */}
           <div className="flex lg:hidden items-center gap-2 sm:gap-3">
-            <button
-              onClick={() => onSelectTab('book')}
-              className="px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs font-semibold uppercase tracking-wider text-white bg-[#8B3A56] hover:bg-[#722A42] transition-colors shadow-2xs flex items-center gap-1.5 cursor-pointer"
-            >
-              <Sparkles className="w-3 h-3" />
-              <span>Book</span>
-            </button>
+            {isAdmin ? (
+              <button
+                onClick={() => onSelectTab('admin')}
+                className="px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs font-semibold uppercase tracking-wider text-white bg-[#8B3A56] hover:bg-[#722A42] transition-colors shadow-2xs flex items-center gap-1.5 cursor-pointer"
+              >
+                <Shield className="w-3 h-3" />
+                <span>Portal</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => onSelectTab('book')}
+                className="px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs font-semibold uppercase tracking-wider text-white bg-[#8B3A56] hover:bg-[#722A42] transition-colors shadow-2xs flex items-center gap-1.5 cursor-pointer"
+              >
+                <Sparkles className="w-3 h-3" />
+                <span>Book</span>
+              </button>
+            )}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-label="Toggle navigation menu"
