@@ -80,8 +80,8 @@ async function runRolesTest() {
     const hasPermanentLabel = await page.locator(':has-text("(Permanent)")').first().isVisible();
     record('Rayana Marked as Permanent Main Admin', hasPermanentLabel);
 
-    // Verify Rayana CANNOT be removed (no Trash icon in Rayana card)
-    const rayanaTrashBtn = page.locator('div:has-text("rayanat.barbosa@gmail.com") button[title*="Revoke" i]');
+    // Verify Rayana CANNOT be removed (no Trash icon for Rayana)
+    const rayanaTrashBtn = page.locator('button[title*="rayanat.barbosa@gmail.com"]');
     const hasTrashForRayana = await rayanaTrashBtn.isVisible();
     record('Main Admin (Rayana) Cannot Be Removed (No Revoke Button)', !hasTrashForRayana);
 

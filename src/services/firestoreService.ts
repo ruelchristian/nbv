@@ -48,7 +48,10 @@ const envAdminEmails: string[] = typeof import.meta !== 'undefined' && import.me
       .filter(Boolean)
   : [];
 
-export const MAIN_ADMIN_EMAIL = 'rayanat.barbosa@gmail.com';
+export const MAIN_ADMIN_EMAIL = 'ruelchristianumel@gmail.com';
+export const DEFAULT_SUB_ADMIN_EMAILS = [
+  'rayanat.barbosa@gmail.com',
+];
 const LOCAL_STORAGE_MAIN_ADMIN_KEY = 'nails_by_vril_main_admin';
 
 export function getActiveMainAdminEmail(): string {
@@ -68,6 +71,7 @@ export function isMainAdmin(email?: string | null): boolean {
 
 export const DEFAULT_ADMIN_EMAILS = [
   MAIN_ADMIN_EMAIL,
+  ...DEFAULT_SUB_ADMIN_EMAILS,
 ];
 
 export const ADMIN_EMAILS: string[] = Array.from(new Set([...DEFAULT_ADMIN_EMAILS, ...envAdminEmails]));
@@ -760,6 +764,18 @@ export const firestoreService = {
     };
 
     const list: AdminAccount[] = [mainAdminItem];
+
+    // Add default sub-admins if not main admin
+    DEFAULT_SUB_ADMIN_EMAILS.forEach((email) => {
+      const cleanEmail = email.toLowerCase().trim();
+      if (!isMainAdmin(cleanEmail) && !list.some((item) => item.email.toLowerCase() === cleanEmail)) {
+        list.push({
+          id: cleanEmail.replace(/[^a-zA-Z0-9]/g, '_'),
+          email: cleanEmail,
+          role: 'sub_admin',
+        });
+      }
+    });
 
     // Add envAdminEmails as sub-admins if not main admin
     envAdminEmails.forEach((email) => {

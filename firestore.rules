@@ -12,9 +12,11 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Main Admin: Rayana by default or any admin designated with role == 'main_admin' in Firestore
+    // Main Admin: Ruel or Rayana by default, or any admin designated with role == 'main_admin' in Firestore
     function isMainAdmin() {
       return isSignedIn() && (
+        request.auth.token.email.matches('(?i)^ruelchristianumel@gmail\\.com$') ||
+        request.auth.token.email == 'ruelchristianumel@gmail.com' ||
         request.auth.token.email.matches('(?i)^rayanat\\.barbosa@gmail\\.com$') ||
         request.auth.token.email == 'rayanat.barbosa@gmail.com' ||
         (request.auth.token.email != null && exists(/databases/$(database)/documents/admins/$(request.auth.token.email)) && get(/databases/$(database)/documents/admins/$(request.auth.token.email)).data.role == 'main_admin') ||
@@ -25,6 +27,8 @@ service cloud.firestore {
     // Sub-Admin: Authorized delegates stored in /admins collection (removable by Main Admin)
     function isSubAdmin() {
       return isSignedIn() && (
+        request.auth.token.email.matches('(?i)^ruelchristianumel@gmail\\.com$') ||
+        request.auth.token.email == 'ruelchristianumel@gmail.com' ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
         (request.auth.token.email != null && (
           exists(/databases/$(database)/documents/admins/$(request.auth.token.email)) ||
