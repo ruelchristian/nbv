@@ -125,8 +125,10 @@ export default function App() {
           setCurrentUser({
             uid: 'test_admin_uid',
             email: clean,
-            displayName: isMainAdmin(clean) ? 'Rayana Barbosa (Main Admin)' : 'Salon Sub-Admin',
+            displayName: isMainAdmin(clean) ? 'Ruel Umel (Main Admin)' : 'Salon Sub-Admin',
           } as any);
+        } else if (!auth.currentUser) {
+          setCurrentUser(null);
         }
       } catch {
         // Ignore storage access errors
