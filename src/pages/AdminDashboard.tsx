@@ -546,7 +546,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const handleToggleService = async (service: Service) => {
     setIsTogglingService(service.id);
-    const nextStatus = !service.isActive;
+    const currentActive = service.isActive !== false;
+    const nextStatus = !currentActive;
 
     // 1. Instantly update local state optimistically
     setServicesList((prev) =>
@@ -1235,65 +1236,68 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </p>
             </div>
             <span className="text-xs font-semibold text-[#8B3A56] bg-[#FAF4F5] px-3 py-1.5 rounded-full border border-[#F3B8C3] self-start sm:self-auto">
-              {servicesList.filter((s) => s.isActive).length} of {servicesList.length} active
+              {servicesList.filter((s) => s.isActive !== false).length} of {servicesList.length} active
             </span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {servicesList.map((service) => (
-              <div
-                key={service.id}
-                className={`p-4 rounded-2xl border transition-all flex items-center justify-between gap-4 ${
-                  service.isActive
-                    ? 'border-[#EFE8E9] bg-[#FAF7F4]'
-                    : 'border-gray-200 bg-gray-50/70 opacity-70'
-                }`}
-              >
-                <div className="space-y-1 min-w-0">
-                  <h4 className="font-serif text-base font-bold text-[#231F20] truncate">
-                    {service.name}
-                  </h4>
-                  <p className="text-xs text-[#7A6E74]">
-                    {service.category} • {service.durationMinutes} mins
-                  </p>
-                  <p className="font-bold text-sm text-[#8B3A56]">₱{service.price}</p>
-                </div>
+            {servicesList.map((service) => {
+              const isServiceActive = service.isActive !== false;
+              return (
+                <div
+                  key={service.id}
+                  className={`p-4 rounded-2xl border transition-all flex items-center justify-between gap-4 ${
+                    isServiceActive
+                      ? 'border-[#EFE8E9] bg-[#FAF7F4]'
+                      : 'border-gray-200 bg-gray-50/70 opacity-70'
+                  }`}
+                >
+                  <div className="space-y-1 min-w-0">
+                    <h4 className="font-serif text-base font-bold text-[#231F20] truncate">
+                      {service.name}
+                    </h4>
+                    <p className="text-xs text-[#7A6E74]">
+                      {service.category} • {service.durationMinutes} mins
+                    </p>
+                    <p className="font-bold text-sm text-[#8B3A56]">₱{service.price}</p>
+                  </div>
 
-                <div className="flex items-center gap-3 shrink-0">
-                  <span
-                    className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase transition-colors ${
-                      service.isActive
-                        ? 'bg-[#D1FAE5] text-[#047857]'
-                        : 'bg-gray-200 text-gray-600'
-                    }`}
-                  >
-                    {service.isActive ? 'Active' : 'Off'}
-                  </span>
-
-                  {/* Toggle On/Off Switch Button */}
-                  <button
-                    type="button"
-                    disabled={isTogglingService === service.id}
-                    onClick={() => handleToggleService(service)}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden disabled:opacity-50 ${
-                      service.isActive ? 'bg-[#047857]' : 'bg-gray-300'
-                    }`}
-                    title={
-                      service.isActive
-                        ? `Toggle OFF (hide ${service.name} from booking)`
-                        : `Toggle ON (make ${service.name} bookable)`
-                    }
-                  >
+                  <div className="flex items-center gap-3 shrink-0">
                     <span
-                      aria-hidden="true"
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                        service.isActive ? 'translate-x-5' : 'translate-x-0'
+                      className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase transition-colors ${
+                        isServiceActive
+                          ? 'bg-[#D1FAE5] text-[#047857]'
+                          : 'bg-gray-200 text-gray-600'
                       }`}
-                    />
-                  </button>
+                    >
+                      {isServiceActive ? 'Active' : 'Off'}
+                    </span>
+
+                    {/* Toggle On/Off Switch Button */}
+                    <button
+                      type="button"
+                      disabled={isTogglingService === service.id}
+                      onClick={() => handleToggleService(service)}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden disabled:opacity-50 ${
+                        isServiceActive ? 'bg-[#047857]' : 'bg-gray-300'
+                      }`}
+                      title={
+                        isServiceActive
+                          ? `Toggle OFF (hide ${service.name} from booking)`
+                          : `Toggle ON (make ${service.name} bookable)`
+                      }
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                          isServiceActive ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

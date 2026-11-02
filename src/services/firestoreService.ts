@@ -194,7 +194,14 @@ export const firestoreService = {
       if (!snap || snap.empty) {
         return DEFAULT_SERVICES;
       }
-      const allServices = snap.docs.map((d) => ({ ...d.data(), id: d.id } as Service));
+      const allServices = snap.docs.map((d) => {
+        const data = d.data();
+        return {
+          ...data,
+          id: d.id,
+          isActive: data.isActive !== false,
+        } as Service;
+      });
 
       // Strictly allow only the 4 approved services:
       // - In-Studio
