@@ -61,6 +61,13 @@ export default function App() {
     )
   );
 
+  // Admins manage the business via Owner Portal ('admin'); redirect away from client 'customer' bookings view
+  useEffect(() => {
+    if (isAdmin && currentTab === 'customer') {
+      setCurrentTab('admin');
+    }
+  }, [isAdmin, currentTab]);
+
   // Listen to Auth State Changes & Global Unhandled Token/WebSocket Rejections
   useEffect(() => {
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {

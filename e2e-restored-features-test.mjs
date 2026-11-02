@@ -7,7 +7,8 @@ async function runRestoredFeaturesTest() {
     server: { port: 3457 },
   });
   await server.listen();
-  const LOCAL_URL = 'http://localhost:3457';
+  const port = server.httpServer.address().port;
+  const LOCAL_URL = `http://localhost:${port}`;
   console.log(`📡 Local Vite Server listening on ${LOCAL_URL}`);
 
   const browser = await chromium.launch({
@@ -38,7 +39,7 @@ async function runRestoredFeaturesTest() {
     await page.waitForTimeout(1000);
 
     await page.evaluate(() => {
-      sessionStorage.setItem('nbv_test_admin', 'rayanat.barbosa@gmail.com');
+      sessionStorage.setItem('nbv_test_admin', 'ruelchristianumel@gmail.com');
       window.dispatchEvent(new Event('nbv_auth_change'));
     });
     await page.waitForTimeout(800);

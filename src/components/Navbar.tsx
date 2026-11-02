@@ -29,7 +29,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'home', label: 'Home' },
     { id: 'services', label: 'Services & Pricing' },
     { id: 'book', label: 'Book Appointment', highlight: true },
-    ...(currentUser ? [{ id: 'customer', label: 'My Bookings', icon: User }] : []),
+    ...(currentUser && !isAdmin ? [{ id: 'customer', label: 'My Bookings', icon: User }] : []),
     ...(currentUser && isAdmin ? [{ id: 'admin', label: 'Owner Portal', icon: Shield, badge: 'Admin' }] : []),
   ];
 

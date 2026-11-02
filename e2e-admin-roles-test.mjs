@@ -7,7 +7,8 @@ async function runRolesTest() {
     server: { port: 3456 },
   });
   await server.listen();
-  const LOCAL_URL = 'http://localhost:3456';
+  const port = server.httpServer.address().port;
+  const LOCAL_URL = `http://localhost:${port}`;
   console.log(`📡 Local Vite Server listening on ${LOCAL_URL}`);
 
   const browser = await chromium.launch({
@@ -31,15 +32,15 @@ async function runRolesTest() {
 
   try {
     // ----------------------------------------------------
-    // SCENARIO 1: Main Admin (Rayana) Access & Controls
+    // SCENARIO 1: Main Admin (Ruel) Access & Controls
     // ----------------------------------------------------
-    console.log('\n--- Scenario 1: Main Admin (rayanat.barbosa@gmail.com) ---');
+    console.log('\n--- Scenario 1: Main Admin (ruelchristianumel@gmail.com) ---');
     await page.goto(LOCAL_URL, { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(1000);
 
-    // Inject Rayana as Main Admin
+    // Inject Ruel as Main Admin
     await page.evaluate(() => {
-      sessionStorage.setItem('nbv_test_admin', 'rayanat.barbosa@gmail.com');
+      sessionStorage.setItem('nbv_test_admin', 'ruelchristianumel@gmail.com');
       window.dispatchEvent(new Event('nbv_auth_change'));
     });
     await page.waitForTimeout(800);
@@ -52,7 +53,7 @@ async function runRolesTest() {
 
     // Verify Main Admin badge in header
     const mainAdminBadge = await page.locator('span:has-text("Main Admin")').first().isVisible();
-    record('Rayana has Main Admin Crown Badge in Header', mainAdminBadge);
+    record('Main Admin has Crown Badge in Header', mainAdminBadge);
 
     // Navigate to Settings Tab
     const settingsTabBtn = page.locator('button:has-text("Settings"), button:has-text("Salon Profile")').first();
@@ -72,18 +73,18 @@ async function runRolesTest() {
     const isGrantBtnVisible = await grantSubAdminBtn.isVisible();
     record('Main Admin Can See Grant Sub-Admin Access Button', isGrantBtnVisible);
 
-    // Check Rayana account row has "Main Admin" & "(Permanent)"
-    const rayanaRow = page.locator('div:has-text("rayanat.barbosa@gmail.com")').first();
-    const isRayanaRowVisible = await rayanaRow.isVisible();
-    record('Rayana Listed as Active Administrator', isRayanaRowVisible);
+    // Check Main Admin account row has "Main Admin" & "(Permanent)"
+    const ruelRow = page.locator('div:has-text("ruelchristianumel@gmail.com")').first();
+    const isRuelRowVisible = await ruelRow.isVisible();
+    record('Main Admin Listed as Active Administrator', isRuelRowVisible);
 
     const hasPermanentLabel = await page.locator(':has-text("(Permanent)")').first().isVisible();
-    record('Rayana Marked as Permanent Main Admin', hasPermanentLabel);
+    record('Main Admin Marked as Permanent', hasPermanentLabel);
 
-    // Verify Rayana CANNOT be removed (no Trash icon for Rayana)
-    const rayanaTrashBtn = page.locator('button[title*="rayanat.barbosa@gmail.com"]');
-    const hasTrashForRayana = await rayanaTrashBtn.isVisible();
-    record('Main Admin (Rayana) Cannot Be Removed (No Revoke Button)', !hasTrashForRayana);
+    // Verify Main Admin CANNOT be removed (no Trash icon for Main Admin)
+    const ruelTrashBtn = page.locator('button[title*="ruelchristianumel@gmail.com"]');
+    const hasTrashForRuel = await ruelTrashBtn.isVisible();
+    record('Main Admin Cannot Be Removed (No Revoke Button)', !hasTrashForRuel);
 
     // ----------------------------------------------------
     // SCENARIO 2: Add Sub-Admin & Remove Sub-Admin by Main Admin

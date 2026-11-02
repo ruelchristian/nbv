@@ -80,7 +80,7 @@ export const Footer: React.FC<FooterProps> = ({
                   Reserve Appointment Slot
                 </button>
               </li>
-              {currentUser ? (
+              {currentUser && !isAdmin && (
                 <li>
                   <button
                     onClick={() => onSelectTab('customer')}
@@ -89,7 +89,8 @@ export const Footer: React.FC<FooterProps> = ({
                     My Appointments &amp; History
                   </button>
                 </li>
-              ) : (
+              )}
+              {!currentUser && (
                 <li>
                   <button
                     onClick={() => {
