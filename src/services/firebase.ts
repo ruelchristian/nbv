@@ -1,10 +1,25 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
-import firebaseConfig from '../../firebase-applet-config.json';
+// Load optional local config file if present without failing builds when absent
+const localConfigFiles = import.meta.glob('../../firebase-applet-config.json', { eager: true }) as Record<
+  string,
+  { default?: Record<string, any> }
+>;
+const localConfig = localConfigFiles['../../firebase-applet-config.json']?.default || {};
+
+const firebaseConfig = {
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || localConfig.projectId || 'nails-by-vril-bb79b',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || localConfig.appId,
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || localConfig.apiKey,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || localConfig.authDomain,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || localConfig.storageBucket,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || localConfig.messagingSenderId,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || localConfig.measurementId,
+};
 
 const app = initializeApp(firebaseConfig);
-const customDbId = (firebaseConfig as Record<string, any>).firestoreDatabaseId;
+const customDbId = (firebaseConfig as Record<string, any>).firestoreDatabaseId || localConfig.firestoreDatabaseId;
 export const db = customDbId ? getFirestore(app, customDbId) : getFirestore(app);
 export const auth = getAuth(app);
 

@@ -110,10 +110,19 @@ async function runTest() {
     assert(await walkInModalHeader.isVisible(), 'Walk-In Booking Modal successfully opened');
 
     // 13. Fill in Walk-In details
-    await page.fill('input[placeholder="e.g. Maria Santos"]', 'Jessica Test Walkin');
+    const uniqueClientName = `Jessica Walkin ${Date.now().toString().slice(-4)}`;
+    await page.fill('input[placeholder="e.g. Maria Santos"]', uniqueClientName);
     await page.fill('input[placeholder="e.g. 0917 123 4567"]', '09179998888');
-    await page.fill('input[type="date"]', '2026-11-16');
-    await page.selectOption('select:has-text("10:00 AM")', '02:30 PM');
+    
+    // Pick next Sunday dynamically based on timestamp
+    const daysOffset = 14 + (Math.floor(Date.now() / 1000) % 20) * 7;
+    const futureDate = new Date(Date.now() + daysOffset * 86400000);
+    const dateStr = futureDate.toISOString().split('T')[0];
+    await page.fill('input[type="date"]', dateStr);
+
+    const times = ['10:00 AM', '11:30 AM', '01:00 PM', '02:30 PM', '04:00 PM', '05:30 PM', '07:00 PM'];
+    const randomTime = times[Math.floor(Math.random() * times.length)];
+    await page.selectOption('select:has-text("10:00 AM")', randomTime);
     await page.fill('textarea[placeholder*="chrome french tips"]', 'Walk-in requested almond shape and builder gel');
 
     // 14. Submit Walk-In Booking
@@ -122,11 +131,11 @@ async function runTest() {
     await page.waitForTimeout(1500);
 
     // 15. Verify toast message
-    const toast = page.locator('text=Walk-in appointment recorded for Jessica Test Walkin!');
+    const toast = page.locator(`text=Walk-in appointment recorded for ${uniqueClientName}!`);
     assert(await toast.isVisible(), 'Success toast displayed confirming walk-in booking');
 
     // 16. Verify newly added walk-in appointment appears in the list
-    const newWalkInCard = page.getByRole('heading', { name: 'Jessica Test Walkin' });
+    const newWalkInCard = page.getByRole('heading', { name: uniqueClientName });
     assert(await newWalkInCard.isVisible(), 'New walk-in client is listed in the appointments pipeline');
 
     // 17. Verify Calendar tab has "+ Walk-In" button
