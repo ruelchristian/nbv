@@ -12,18 +12,28 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isAdmin() {
+    // Main Admin: Rayana has exclusive primary ownership & authority to manage sub-admins
+    function isMainAdmin() {
       return isSignedIn() && (
         request.auth.token.email.matches('(?i)^rayanat\\.barbosa@gmail\\.com$') ||
-        request.auth.token.email == 'rayanat.barbosa@gmail.com' ||
-        request.auth.token.email.matches('(?i)^ruelchristianumel@gmail\\.com$') ||
-        request.auth.token.email == 'ruelchristianumel@gmail.com' ||
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        request.auth.token.email == 'rayanat.barbosa@gmail.com'
       );
     }
 
-    function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    // Sub-Admin: Authorized delegates stored in /admins collection (removable by Main Admin)
+    function isSubAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (request.auth.token.email != null && (
+          exists(/databases/$(database)/documents/admins/$(request.auth.token.email)) ||
+          exists(/databases/$(database)/documents/admins/$(request.auth.token.email.lower()))
+        ))
+      );
+    }
+
+    // Any Admin (Main Admin or Sub-Admin) has operational access
+    function isAdmin() {
+      return isMainAdmin() || isSubAdmin();
     }
 
     // Connection test per skill directive
@@ -97,9 +107,10 @@ service cloud.firestore {
       allow create, update: if isSignedIn() && request.auth.uid == userId;
     }
 
+    // Admin accounts: Only the Main Admin (Rayana) can add or remove sub-admins
     match /admins/{adminId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isMainAdmin();
     }
   }
 }

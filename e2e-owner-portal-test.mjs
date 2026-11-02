@@ -1,7 +1,7 @@
 import { chromium } from 'playwright';
 
 const LIVE_URL = 'https://nbv-lyart.vercel.app';
-const ADMIN_EMAIL = 'ruelchristianumel@gmail.com';
+const ADMIN_EMAIL = 'rayanat.barbosa@gmail.com';
 
 async function runAdminPortalE2ETest() {
   console.log('==================================================');

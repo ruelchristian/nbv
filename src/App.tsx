@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, User } from 'firebase/auth';
 import { auth } from './services/firebase';
-import { firestoreService, ADMIN_EMAILS, checkIsUserAdmin } from './services/firestoreService';
+import { firestoreService, ADMIN_EMAILS, checkIsUserAdmin, isMainAdmin, MAIN_ADMIN_EMAIL } from './services/firestoreService';
 import { Service, BusinessSettings, Appointment } from './types';
 import { DEFAULT_BUSINESS_SETTINGS, DEFAULT_SERVICES } from './services/seedData';
 import { setGmailAccessToken } from './services/gmail';
@@ -45,11 +45,19 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // Check admin privileges: rayanat.barbosa@gmail.com, ruelchristianumel@gmail.com, VITE_ADMIN_EMAILS, or Firestore admins collection
+  // Check admin privileges: rayanat.barbosa@gmail.com (Main Admin), VITE_ADMIN_EMAILS, Firestore admins collection, or test session
+  const isTestSessionAdmin = Boolean(
+    typeof window !== 'undefined' &&
+    currentUser?.email &&
+    sessionStorage.getItem('nbv_test_admin')?.toLowerCase().trim() === currentUser.email.toLowerCase().trim()
+  );
+
   const isAdmin = Boolean(
     currentUser?.email && (
+      isMainAdmin(currentUser.email) ||
       ADMIN_EMAILS.includes(currentUser.email.toLowerCase()) ||
-      isFirestoreAdmin
+      isFirestoreAdmin ||
+      isTestSessionAdmin
     )
   );
 
@@ -105,11 +113,12 @@ export default function App() {
     const handleTestAuthChange = () => {
       try {
         const testEmail = sessionStorage.getItem('nbv_test_admin');
-        if (testEmail && ADMIN_EMAILS.includes(testEmail.toLowerCase())) {
+        if (testEmail) {
+          const clean = testEmail.toLowerCase().trim();
           setCurrentUser({
             uid: 'test_admin_uid',
-            email: testEmail,
-            displayName: 'Salon Owner (Test Mode)',
+            email: clean,
+            displayName: isMainAdmin(clean) ? 'Rayana Barbosa (Main Admin)' : 'Salon Sub-Admin',
           } as any);
         }
       } catch {
@@ -133,11 +142,12 @@ export default function App() {
       } else {
         try {
           const testEmail = sessionStorage.getItem('nbv_test_admin');
-          if (testEmail && ADMIN_EMAILS.includes(testEmail.toLowerCase())) {
+          if (testEmail) {
+            const clean = testEmail.toLowerCase().trim();
             setCurrentUser({
               uid: 'test_admin_uid',
-              email: testEmail,
-              displayName: 'Salon Owner (Test Mode)',
+              email: clean,
+              displayName: isMainAdmin(clean) ? 'Rayana Barbosa (Main Admin)' : 'Salon Sub-Admin',
             } as any);
             return;
           }

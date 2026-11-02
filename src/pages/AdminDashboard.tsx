@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Appointment, BusinessSettings, Service, AppointmentStatus } from '../types';
-import { firestoreService } from '../services/firestoreService';
+import { firestoreService, isMainAdmin, MAIN_ADMIN_EMAIL, AdminAccount } from '../services/firestoreService';
 import {
   sendAppointmentConfirmationEmail,
   sendAppointmentRejectionEmail,
@@ -9,6 +9,9 @@ import {
 } from '../services/gmail';
 import {
   Shield,
+  ShieldCheck,
+  ShieldAlert,
+  Crown,
   Calendar,
   Clock,
   User,
@@ -79,9 +82,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [isSavingSettings, setIsSavingSettings] = useState(false);
 
   // Dynamic Admin Accounts Management
-  const [adminAccountsList, setAdminAccountsList] = useState<{ id: string; email: string; role?: string }[]>([]);
+  const [adminAccountsList, setAdminAccountsList] = useState<AdminAccount[]>([]);
   const [newAdminEmail, setNewAdminEmail] = useState('');
   const [isAddingAdmin, setIsAddingAdmin] = useState(false);
+
+  const isCurrentUserMainAdmin = isMainAdmin(currentUser?.email);
 
   React.useEffect(() => {
     firestoreService.getAdminsList().then((res) => setAdminAccountsList(res));
@@ -326,8 +331,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 Owner Portal Access Notice
               </h3>
               <p className="text-xs text-[#805B10]/80 mt-1">
-                This dashboard is designed for <strong>rayanat.barbosa@gmail.com</strong>.
-                {currentUser ? ` Currently active as ${currentUser.email}.` : ' You are viewing in preview mode as a guest.'}
+                Main Admin: <strong>{MAIN_ADMIN_EMAIL}</strong>.
+                {currentUser ? ` Currently active as ${currentUser.email} (${isCurrentUserMainAdmin ? 'Main Admin' : 'Sub-Admin'}).` : ' You are viewing in preview mode as a guest.'}
               </p>
             </div>
           </div>
@@ -345,7 +350,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       <div className="bg-white rounded-3xl border border-[#EFE8E9] p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-2xs">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 rounded-2xl bg-[#FCEBEE] border border-[#F3B8C3] text-[#8B3A56] flex items-center justify-center font-serif text-2xl font-bold shrink-0">
-            <Shield className="w-7 h-7" />
+            {isCurrentUserMainAdmin ? (
+              <Crown className="w-7 h-7 text-[#8B3A56]" />
+            ) : (
+              <Shield className="w-7 h-7" />
+            )}
           </div>
           <div>
             <div className="flex items-center gap-2">
@@ -353,9 +362,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 Owner &amp; Studio Portal
               </h1>
               {isAdmin && (
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#8B3A56] text-white">
-                  Admin Verified
-                </span>
+                isCurrentUserMainAdmin ? (
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-gradient-to-r from-[#8B3A56] to-[#601F35] text-amber-200 border border-amber-400/30 shadow-xs flex items-center gap-1">
+                    <Crown className="w-3 h-3 text-amber-300" />
+                    <span>Main Admin</span>
+                  </span>
+                ) : (
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#FCEBEE] text-[#8B3A56] border border-[#F3B8C3] shadow-xs flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3 text-[#8B3A56]" />
+                    <span>Sub-Admin</span>
+                  </span>
+                )
               )}
             </div>
             <p className="text-xs text-[#7A6E74] mt-0.5">
@@ -838,92 +855,133 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <div>
                 <h2 className="font-serif text-xl font-bold text-[#231F20] flex items-center gap-2">
                   <Shield className="w-5 h-5 text-[#8B3A56]" />
-                  <span>Authorized Owner &amp; Admin Accounts</span>
+                  <span>Authorized Owner &amp; Sub-Admin Accounts</span>
                 </h2>
                 <p className="text-xs text-[#7A6E74] mt-0.5">
-                  Google accounts listed here have full owner access to manage appointments, calendar blocks, and salon settings.
+                  Rayana is the Main Admin. Sub-admins have operational access to manage appointments, calendar blocks, and salon settings, but cannot add or remove other sub-admins.
                 </p>
               </div>
             </div>
 
-            {/* Add Admin Form */}
-            <div className="bg-[#FAF7F4] p-5 rounded-2xl border border-[#EFE8E9] flex flex-col sm:flex-row items-center gap-3">
-              <div className="w-full sm:w-auto flex-1">
-                <label className="block text-[11px] font-bold text-[#7A6E74] uppercase mb-1">
-                  Add New Owner / Admin Google Email
-                </label>
-                <input
-                  type="email"
-                  placeholder="e.g. newowner@gmail.com"
-                  value={newAdminEmail}
-                  onChange={(e) => setNewAdminEmail(e.target.value)}
-                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-white border border-[#E5D5DA] focus:border-[#8B3A56] focus:outline-hidden"
-                />
+            {/* Add Sub-Admin Form: Only available for Main Admin */}
+            {isCurrentUserMainAdmin ? (
+              <div className="bg-[#FAF7F4] p-5 rounded-2xl border border-[#EFE8E9] flex flex-col sm:flex-row items-center gap-3">
+                <div className="w-full sm:w-auto flex-1">
+                  <label className="block text-[11px] font-bold text-[#7A6E74] uppercase mb-1">
+                    Add New Sub-Admin Google Email
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="e.g. subadmin@gmail.com"
+                    value={newAdminEmail}
+                    onChange={(e) => setNewAdminEmail(e.target.value)}
+                    className="w-full px-3.5 py-2 text-xs rounded-xl bg-white border border-[#E5D5DA] focus:border-[#8B3A56] focus:outline-hidden"
+                  />
+                </div>
+                <button
+                  type="button"
+                  disabled={!newAdminEmail || isAddingAdmin}
+                  onClick={async () => {
+                    if (!newAdminEmail.trim()) return;
+                    setIsAddingAdmin(true);
+                    try {
+                      await firestoreService.addAdminEmail(newAdminEmail, currentUser?.email || undefined);
+                      const updated = await firestoreService.getAdminsList();
+                      setAdminAccountsList(updated);
+                      setNewAdminEmail('');
+                      showToast(`Granted sub-admin access to ${newAdminEmail}!`);
+                    } catch (err) {
+                      showToast(undefined, err instanceof Error ? err.message : 'Failed to add sub-admin');
+                    } finally {
+                      setIsAddingAdmin(false);
+                    }
+                  }}
+                  className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs font-semibold bg-[#8B3A56] hover:bg-[#722A42] text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer mt-2 sm:mt-5 disabled:opacity-40"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>{isAddingAdmin ? 'Granting...' : 'Grant Sub-Admin Access'}</span>
+                </button>
               </div>
-              <button
-                type="button"
-                disabled={!newAdminEmail || isAddingAdmin}
-                onClick={async () => {
-                  if (!newAdminEmail.trim()) return;
-                  setIsAddingAdmin(true);
-                  try {
-                    await firestoreService.addAdminEmail(newAdminEmail);
-                    const updated = await firestoreService.getAdminsList();
-                    setAdminAccountsList(updated);
-                    setNewAdminEmail('');
-                    showToast(`Granted owner access to ${newAdminEmail}!`);
-                  } catch (err) {
-                    showToast(undefined, err instanceof Error ? err.message : 'Failed to add admin');
-                  } finally {
-                    setIsAddingAdmin(false);
-                  }
-                }}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs font-semibold bg-[#8B3A56] hover:bg-[#722A42] text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer mt-2 sm:mt-5 disabled:opacity-40"
-              >
-                <Plus className="w-4 h-4" />
-                <span>{isAddingAdmin ? 'Granting...' : 'Grant Owner Access'}</span>
-              </button>
-            </div>
+            ) : (
+              <div className="bg-[#FFF8E7] border border-[#F5C77E] p-4 rounded-2xl flex items-start gap-3">
+                <ShieldAlert className="w-5 h-5 text-[#B45309] shrink-0 mt-0.5" />
+                <div className="text-xs text-[#805B10]">
+                  <p className="font-bold">Sub-Admin Restriction</p>
+                  <p className="mt-0.5 leading-relaxed">
+                    You are signed in with Sub-Admin access. Sub-admins cannot add or remove other sub-admins. Only the Main Admin (<strong>{MAIN_ADMIN_EMAIL}</strong>) can manage admin accounts.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Admin Accounts List */}
             <div className="space-y-3">
               <h3 className="text-xs font-bold uppercase tracking-wider text-[#7A6E74]">
-                Active Owners ({adminAccountsList.length})
+                Active Administrators ({adminAccountsList.length})
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {adminAccountsList.map((admin) => {
-                  const isPermanent = ['rayanat.barbosa@gmail.com', 'ruelchristianumel@gmail.com'].includes(admin.email.toLowerCase());
+                  const isMain = isMainAdmin(admin.email);
                   return (
                     <div
                       key={admin.id || admin.email}
-                      className="p-3.5 rounded-2xl bg-[#FAF7F4] border border-[#EFE8E9] flex items-center justify-between gap-3 text-xs"
+                      className={`p-3.5 rounded-2xl border flex items-center justify-between gap-3 text-xs ${
+                        isMain ? 'bg-[#FFFDF9] border-[#F0D5BE]' : 'bg-[#FAF7F4] border-[#EFE8E9]'
+                      }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-8 h-8 rounded-full bg-[#FCEBEE] text-[#8B3A56] flex items-center justify-center font-bold text-xs shrink-0">
-                          {admin.email.charAt(0).toUpperCase()}
+                        <div
+                          className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
+                            isMain
+                              ? 'bg-gradient-to-br from-[#8B3A56] to-[#601F35] text-amber-200'
+                              : 'bg-[#FCEBEE] text-[#8B3A56]'
+                          }`}
+                        >
+                          {isMain ? (
+                            <Crown className="w-4 h-4 text-amber-300" />
+                          ) : (
+                            admin.email.charAt(0).toUpperCase()
+                          )}
                         </div>
                         <div className="min-w-0">
                           <p className="font-semibold text-[#231F20] truncate">{admin.email}</p>
-                          <span className="text-[10px] text-[#8B3A56] font-bold uppercase tracking-wider">
-                            {admin.role || 'Owner'}
-                          </span>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            {isMain ? (
+                              <span className="text-[10px] bg-gradient-to-r from-[#8B3A56] to-[#601F35] text-amber-200 font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border border-amber-300/30 flex items-center gap-1">
+                                <Crown className="w-3 h-3 text-amber-300" />
+                                <span>Main Admin</span>
+                              </span>
+                            ) : (
+                              <span className="text-[10px] bg-[#FAF0F3] text-[#8B3A56] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border border-[#F3B8C3] flex items-center gap-1">
+                                <ShieldCheck className="w-3 h-3" />
+                                <span>Sub-Admin</span>
+                              </span>
+                            )}
+                            {isMain && (
+                              <span className="text-[10px] text-amber-800 font-medium">(Permanent)</span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      {!isPermanent && (
+
+                      {/* Sub-admins can be removed, but ONLY by the Main Admin. Rayana can never be removed. */}
+                      {!isMain && isCurrentUserMainAdmin && (
                         <button
                           type="button"
                           onClick={async () => {
-                            try {
-                              await firestoreService.removeAdminEmail(admin.email);
-                              const updated = await firestoreService.getAdminsList();
-                              setAdminAccountsList(updated);
-                              showToast(`Revoked owner access for ${admin.email}`);
-                            } catch {
-                              showToast(undefined, 'Failed to revoke admin');
+                            if (window.confirm(`Revoke sub-admin access for ${admin.email}?`)) {
+                              try {
+                                await firestoreService.removeAdminEmail(admin.email, currentUser?.email || undefined);
+                                const updated = await firestoreService.getAdminsList();
+                                setAdminAccountsList(updated);
+                                showToast(`Revoked sub-admin access for ${admin.email}`);
+                              } catch (err) {
+                                showToast(undefined, err instanceof Error ? err.message : 'Failed to revoke sub-admin');
+                              }
                             }
                           }}
                           className="p-1.5 text-gray-400 hover:text-red-600 transition-colors cursor-pointer shrink-0"
-                          title="Revoke Admin Access"
+                          title={`Revoke Sub-Admin Access for ${admin.email}`}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>

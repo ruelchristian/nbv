@@ -21,6 +21,24 @@ const SLOT_LOCKS_COL = 'slot_locks';
 const SETTINGS_COL = 'business_settings';
 const ADMINS_COL = 'admins';
 const LOCAL_STORAGE_APPTS_KEY = 'nails_by_vril_appointments_backup';
+const LOCAL_STORAGE_ADMINS_KEY = 'nails_by_vril_admins_backup';
+
+function getLocalAdmins(): AdminAccount[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_ADMINS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalAdmins(admins: AdminAccount[]): void {
+  try {
+    localStorage.setItem(LOCAL_STORAGE_ADMINS_KEY, JSON.stringify(admins));
+  } catch {
+    // Ignore
+  }
+}
 
 // Dynamically configurable admin emails: Reads from VITE_ADMIN_EMAILS env variable or defaults
 const envAdminEmails: string[] = typeof import.meta !== 'undefined' && import.meta.env?.VITE_ADMIN_EMAILS
@@ -30,17 +48,35 @@ const envAdminEmails: string[] = typeof import.meta !== 'undefined' && import.me
       .filter(Boolean)
   : [];
 
+export const MAIN_ADMIN_EMAIL = 'rayanat.barbosa@gmail.com';
+
+export function isMainAdmin(email?: string | null): boolean {
+  if (!email) return false;
+  return email.toLowerCase().trim() === MAIN_ADMIN_EMAIL.toLowerCase();
+}
+
 export const DEFAULT_ADMIN_EMAILS = [
-  'rayanat.barbosa@gmail.com',
-  'ruelchristianumel@gmail.com',
+  MAIN_ADMIN_EMAIL,
 ];
 
 export const ADMIN_EMAILS: string[] = Array.from(new Set([...DEFAULT_ADMIN_EMAILS, ...envAdminEmails]));
 
+export interface AdminAccount {
+  id: string;
+  email: string;
+  role: 'main_admin' | 'sub_admin';
+  createdAt?: string;
+  addedBy?: string;
+}
+
 export async function checkIsUserAdmin(email?: string | null, uid?: string): Promise<boolean> {
   if (!email && !uid) return false;
   const cleanEmail = email?.toLowerCase().trim() || '';
-  if (cleanEmail && ADMIN_EMAILS.includes(cleanEmail)) return true;
+  if (cleanEmail && (isMainAdmin(cleanEmail) || ADMIN_EMAILS.includes(cleanEmail))) return true;
+
+  // Check local storage backup
+  const localAdmins = getLocalAdmins();
+  if (cleanEmail && localAdmins.some((a) => a.email.toLowerCase() === cleanEmail)) return true;
 
   try {
     if (uid) {
@@ -48,6 +84,11 @@ export async function checkIsUserAdmin(email?: string | null, uid?: string): Pro
       if (snapUid.exists()) return true;
     }
     if (cleanEmail) {
+      // Direct email check
+      const snapDirect = await getDoc(doc(db, ADMINS_COL, cleanEmail));
+      if (snapDirect.exists()) return true;
+
+      // Sanitized doc ID fallback
       const cleanId = cleanEmail.replace(/[^a-zA-Z0-9]/g, '_');
       const snapEmail = await getDoc(doc(db, ADMINS_COL, cleanId));
       if (snapEmail.exists()) return true;
@@ -695,12 +736,33 @@ export const firestoreService = {
   },
 
   // 6. DYNAMIC ADMIN ACCOUNTS MANAGEMENT
-  async getAdminsList(): Promise<{ id: string; email: string; role?: string }[]> {
-    const list: { id: string; email: string; role?: string }[] = ADMIN_EMAILS.map((email) => ({
-      id: email.replace(/[^a-zA-Z0-9]/g, '_'),
-      email,
-      role: 'owner',
-    }));
+  async getAdminsList(): Promise<AdminAccount[]> {
+    const mainAdminItem: AdminAccount = {
+      id: MAIN_ADMIN_EMAIL.replace(/[^a-zA-Z0-9]/g, '_'),
+      email: MAIN_ADMIN_EMAIL,
+      role: 'main_admin',
+    };
+
+    const list: AdminAccount[] = [mainAdminItem];
+
+    // Add envAdminEmails as sub-admins if not main admin
+    envAdminEmails.forEach((email) => {
+      if (!isMainAdmin(email) && !list.some((item) => item.email.toLowerCase() === email)) {
+        list.push({
+          id: email.replace(/[^a-zA-Z0-9]/g, '_'),
+          email,
+          role: 'sub_admin',
+        });
+      }
+    });
+
+    // Merge from local storage backup
+    const local = getLocalAdmins();
+    local.forEach((acc) => {
+      if (!isMainAdmin(acc.email) && !list.some((item) => item.email.toLowerCase() === acc.email.toLowerCase())) {
+        list.push(acc);
+      }
+    });
 
     try {
       const snap = await Promise.race([
@@ -710,9 +772,15 @@ export const firestoreService = {
       if (snap) {
         snap.forEach((d) => {
           const data = d.data();
-          const email = (data.email || '').toLowerCase().trim();
-          if (email && !list.some((item) => item.email.toLowerCase() === email)) {
-            list.push({ id: d.id, email, role: data.role || 'admin' });
+          const email = (data.email || d.id || '').toLowerCase().trim();
+          if (email && email.includes('@') && !list.some((item) => item.email.toLowerCase() === email)) {
+            list.push({
+              id: d.id,
+              email,
+              role: isMainAdmin(email) ? 'main_admin' : 'sub_admin',
+              createdAt: data.createdAt,
+              addedBy: data.addedBy,
+            });
           }
         });
       }
@@ -722,20 +790,66 @@ export const firestoreService = {
     return list;
   },
 
-  async addAdminEmail(email: string): Promise<void> {
+  async addAdminEmail(email: string, actingUserEmail?: string): Promise<void> {
+    if (actingUserEmail && !isMainAdmin(actingUserEmail)) {
+      throw new Error(`Permission denied: Only the Main Admin (${MAIN_ADMIN_EMAIL}) can add sub-admins.`);
+    }
+
     const cleanEmail = email.toLowerCase().trim();
-    if (!cleanEmail) throw new Error('Please enter a valid email address.');
-    const docId = cleanEmail.replace(/[^a-zA-Z0-9]/g, '_');
-    await setDoc(doc(db, ADMINS_COL, docId), {
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      throw new Error('Please enter a valid email address.');
+    }
+
+    if (isMainAdmin(cleanEmail)) {
+      throw new Error('This account is already registered as the Main Admin.');
+    }
+
+    const docData: AdminAccount = {
+      id: cleanEmail.replace(/[^a-zA-Z0-9]/g, '_'),
       email: cleanEmail,
-      role: 'owner',
+      role: 'sub_admin',
       createdAt: new Date().toISOString(),
-    });
+      addedBy: actingUserEmail || MAIN_ADMIN_EMAIL,
+    };
+
+    // Update local storage backup immediately
+    const local = getLocalAdmins().filter((a) => a.email.toLowerCase() !== cleanEmail);
+    local.push(docData);
+    saveLocalAdmins(local);
+
+    const cleanId = cleanEmail.replace(/[^a-zA-Z0-9]/g, '_');
+    try {
+      await setDoc(doc(db, ADMINS_COL, cleanEmail), docData);
+      if (cleanId !== cleanEmail) {
+        await setDoc(doc(db, ADMINS_COL, cleanId), docData);
+      }
+    } catch (e) {
+      console.warn('Stored sub-admin locally while awaiting auth token propagation:', e);
+    }
   },
 
-  async removeAdminEmail(email: string): Promise<void> {
+  async removeAdminEmail(email: string, actingUserEmail?: string): Promise<void> {
     const cleanEmail = email.toLowerCase().trim();
-    const docId = cleanEmail.replace(/[^a-zA-Z0-9]/g, '_');
-    await deleteDoc(doc(db, ADMINS_COL, docId));
+    if (isMainAdmin(cleanEmail)) {
+      throw new Error('The Main Admin account cannot be removed.');
+    }
+
+    if (actingUserEmail && !isMainAdmin(actingUserEmail)) {
+      throw new Error(`Permission denied: Only the Main Admin (${MAIN_ADMIN_EMAIL}) can remove sub-admins.`);
+    }
+
+    // Update local storage backup immediately
+    const local = getLocalAdmins().filter((a) => a.email.toLowerCase() !== cleanEmail);
+    saveLocalAdmins(local);
+
+    const cleanId = cleanEmail.replace(/[^a-zA-Z0-9]/g, '_');
+    try {
+      await Promise.allSettled([
+        deleteDoc(doc(db, ADMINS_COL, cleanEmail)),
+        deleteDoc(doc(db, ADMINS_COL, cleanId)),
+      ]);
+    } catch (e) {
+      console.warn('Removed sub-admin locally while awaiting auth token propagation:', e);
+    }
   },
 };
